@@ -13,7 +13,7 @@ This project uses genetic algorithms to design optimal renewable energy systems 
 
 By leveraging multi-objective optimization, EvoGrid identifies a range of Pareto-optimal solutions that represent different trade-offs between these competing objectives.
 
-## Bio-inspired Approach
+## Bio-inspired approach
 
 The core of EvoGrid is the NSGA-II algorithm, which mimics natural selection and evolution to find optimal solutions:
 
@@ -23,7 +23,7 @@ The core of EvoGrid is the NSGA-II algorithm, which mimics natural selection and
 - **Genetic operators**: Uses crossover and mutation to explore the design space
 - **Elitism**: Preserves the best solutions across generations
 
-## Energy System Model
+## Energy system model
 
 The project models a renewable energy system with:
 
@@ -33,7 +33,7 @@ The project models a renewable energy system with:
 
 The model simulates system performance using synthetic weather data (solar irradiance and wind speed) and energy demand patterns over a full year to realistically assess performance.
 
-## Key Features
+## Key features
 
 - Multi-objective optimization using NSGA-II
 - Realistic energy system simulation
@@ -41,7 +41,7 @@ The model simulates system performance using synthetic weather data (solar irrad
 - Sensitivity analysis for key parameters
 - Visualization tools for result interpretation
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
@@ -73,7 +73,7 @@ python main.py
 python utils.py
 ```
 
-## Results Interpretation
+## Results interpretation
 
 The optimization produces a set of Pareto-optimal solutions, each representing a different balance between cost, reliability, and environmental impact. 
 
@@ -83,14 +83,14 @@ Key result files include:
 - Technology mix comparisons
 - Sensitivity analysis for key parameters
 
-### Example Solution Categories
+### Example solution categories
 
-- **Lowest Cost**: 34 solar panels, 7 wind turbines, 2 batteries - $87,320 with 87.8% reliability
-- **Highest Reliability (Cost-Effective)**: 125 solar panels, 5 wind turbines, 5 batteries - $115,100 with 100% reliability
-- **Lowest Emissions**: 25 solar panels, 18 wind turbines, 0 batteries - $183,300 with 95.5% reliability
-- **Balanced Solution**: 82 solar panels, 7 wind turbines, 2 batteries - $107,480 with 99.6% reliability
+- **Lowest cost**: 34 solar panels, 7 wind turbines, 2 batteries - $87,320 with 87.8% reliability
+- **Highest reliability (cost-effective)**: 125 solar panels, 5 wind turbines, 5 batteries - $115,100 with 100% reliability
+- **Lowest emissions**: 25 solar panels, 18 wind turbines, 0 batteries - $183,300 with 95.5% reliability
+- **Balanced solution**: 82 solar panels, 7 wind turbines, 2 batteries - $107,480 with 99.6% reliability
 
-## Project Structure
+## Project structure
 
 - `main.py`: Core optimization algorithm and energy system modeling
 - `utils.py`: Analysis and visualization utilities
