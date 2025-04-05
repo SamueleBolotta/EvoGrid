@@ -1,94 +1,110 @@
-# Multi-objective optimization for sustainable energy system design
+# EvoGrid
 
-## Project overview
-This project implements a multi-objective optimization framework for designing a renewable energy system that balances three competing objectives:
-1. Minimizing total system cost
-2. Maximizing energy production reliability
-3. Minimizing environmental impact based on lifecycle analysis
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The optimization uses the NSGA-II algorithm to find the Pareto-optimal configurations of solar panels, wind turbines, and battery storage.
+EvoGrid is a bio-inspired approach to renewable energy system optimization using NSGA-II (Non-dominated Sorting Genetic Algorithm II). This project demonstrates how evolutionary algorithms can find optimal configurations for renewable energy systems by balancing multiple competing objectives.
 
-## Requirements
+## Overview
+
+This project uses genetic algorithms to design optimal renewable energy systems that balance:
+- Cost minimization
+- Reliability maximization
+- Environmental impact minimization
+
+By leveraging multi-objective optimization, EvoGrid identifies a range of Pareto-optimal solutions that represent different trade-offs between these competing objectives.
+
+## Bio-inspired Approach
+
+The core of EvoGrid is the NSGA-II algorithm, which mimics natural selection and evolution to find optimal solutions:
+
+- **Population-based search**: Maintains a population of diverse system configurations
+- **Multi-objective fitness**: Evaluates solutions based on multiple criteria simultaneously
+- **Pareto optimality**: Identifies solutions where improving one objective would worsen another
+- **Genetic operators**: Uses crossover and mutation to explore the design space
+- **Elitism**: Preserves the best solutions across generations
+
+## Energy System Model
+
+The project models a renewable energy system with:
+
+- **Solar panels**: Convert solar irradiance to electricity
+- **Wind turbines**: Generate electricity from wind
+- **Battery storage**: Store excess energy for use during deficit periods
+
+The model simulates system performance using synthetic weather data (solar irradiance and wind speed) and energy demand patterns over a full year to realistically assess performance.
+
+## Key Features
+
+- Multi-objective optimization using NSGA-II
+- Realistic energy system simulation
+- Detailed analysis of Pareto-optimal solutions
+- Sensitivity analysis for key parameters
+- Visualization tools for result interpretation
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.7+
+- Required packages: numpy, pandas, matplotlib, deap, scipy, seaborn
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/SamueleBolotta/EvoGrid.git
+cd EvoGrid
+
+# Create a virtual environment (optional)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install numpy pandas matplotlib deap scipy seaborn tqdm
 ```
-numpy
-pandas
-matplotlib
-seaborn
-deap
-scipy
-tqdm
+
+### Running the Optimization
+
+```bash
+# Run the main optimization
+python main.py
+
+# Run detailed analysis on selected solutions
+python utils.py
 ```
 
-You can install all required packages with:
-```
-pip install numpy pandas matplotlib seaborn deap scipy tqdm
-```
+## Results Interpretation
 
-## Code structure
+The optimization produces a set of Pareto-optimal solutions, each representing a different balance between cost, reliability, and environmental impact. 
 
-The implementation consists of the following main components:
+Key result files include:
+- Pareto front visualizations (2D and 3D)
+- Detailed analysis of selected solutions
+- Technology mix comparisons
+- Sensitivity analysis for key parameters
 
-1. **Energy system parameters**: Defines the technical and economic parameters for solar panels, wind turbines, and batteries.
+### Example Solution Categories
 
-2. **Weather and demand data generation**: Creates synthetic data for solar irradiance, wind speed, and energy demand.
+- **Lowest Cost**: 34 solar panels, 7 wind turbines, 2 batteries - $87,320 with 87.8% reliability
+- **Highest Reliability (Cost-Effective)**: 125 solar panels, 5 wind turbines, 5 batteries - $115,100 with 100% reliability
+- **Lowest Emissions**: 25 solar panels, 18 wind turbines, 0 batteries - $183,300 with 95.5% reliability
+- **Balanced Solution**: 82 solar panels, 7 wind turbines, 2 batteries - $107,480 with 99.6% reliability
 
-3. **Energy system modeling**: Simulates the performance of an energy system configuration over time.
+## Project Structure
 
-4. **Objective functions**:
-   - `calculate_total_cost`: Computes the total lifecycle cost
-   - `calculate_reliability`: Evaluates the energy supply reliability
-   - `calculate_environmental_impact`: Assesses the environmental impact
+- `main.py`: Core optimization algorithm and energy system modeling
+- `utils.py`: Analysis and visualization utilities
+- `/results`: Output visualizations and data (create this directory)
 
-5. **Constraints**:
-   - Land use constraint
-   - Budget constraint
-   - Minimum energy requirement
+## Contributing
 
-6. **NSGA-II implementation**: Sets up and runs the multi-objective optimization algorithm.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-7. **Analysis and visualization**: Analyzes and visualizes the optimization results, including:
-   - Pareto front visualization
-   - Technology mix analysis
-   - Simulation of selected solutions
-   - Sensitivity analysis
+## License
 
-## How to run
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-1. Run the entire script to perform the optimization and generate visualizations:
-```
-python sustainable_energy_optimization.py
-```
+## References
 
-2. The script will:
-   - Generate synthetic weather and demand data
-   - Run the NSGA-II optimization for 50 generations with a population size of 100
-   - Analyze and visualize the Pareto-optimal solutions
-   - Perform sensitivity analysis on key parameters
-
-## Modifying the model
-
-You can modify various aspects of the model:
-
-- **System parameters**: Adjust costs, capacities, and environmental impacts at the top of the script
-- **Optimization parameters**: Change the population size and number of generations in the `run_nsga2` function call
-- **Constraints**: Modify the constraints in the `check_constraints` function
-- **Objective weights**: Change the weights in the `creator.create("FitnessMulti",...)` line to prioritize different objectives
-
-## Interpreting results
-
-The optimization produces a set of Pareto-optimal solutions, where no solution is strictly better than another across all objectives. The visualizations help to understand:
-
-1. **Pareto front**: Shows the trade-offs between the three objectives
-2. **Solutions composition**: Visualizes the mix of technologies in each solution
-3. **Performance simulation**: Shows the energy balance over time for selected solutions
-4. **Sensitivity analysis**: Evaluates how changes in key parameters affect the performance of a solution
-
-## Extending the model
-
-The model can be extended in several ways:
-- Add more renewable energy sources (e.g., hydropower, geothermal)
-- Incorporate more detailed weather models
-- Add more detailed financial models (e.g., loans, subsidies)
-- Include grid integration aspects
-- Model degradation of components over time
-- Add more detailed constraints (e.g., maximum noise levels, visual impact)
+- Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. IEEE transactions on evolutionary computation, 6(2), 182-197.
+- DEAP (Distributed Evolutionary Algorithms in Python) documentation: https://deap.readthedocs.io/
