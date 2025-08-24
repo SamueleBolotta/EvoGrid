@@ -8,6 +8,9 @@ import random
 import math
 from scipy.stats import norm
 from tqdm import tqdm
+import argparse
+import os
+import datetime
 
 from utils import (
     analyze_results,
@@ -381,7 +384,7 @@ toolbox.register("select", tools.selNSGA2)
 
 # ------- Run Optimization -------
 
-def run_nsga2(pop_size=100, num_generations=50):
+def run_nsga2(pop_size=100, num_generations=50, cxpb=0.7, mutpb=0.2):
     """Run the NSGA-II algorithm."""
     # Initialize statistics
     stats = tools.Statistics(lambda ind: ind.fitness.values)
@@ -405,8 +408,8 @@ def run_nsga2(pop_size=100, num_generations=50):
     population, logbook = algorithms.eaSimple(
         population, 
         toolbox,
-        cxpb=0.7,   # Crossover probability
-        mutpb=0.2,  # Mutation probability
+        cxpb=cxpb,   # Crossover probability
+        mutpb=mutpb,  # Mutation probability
         ngen=num_generations,
         stats=stats,
         halloffame=hof,
@@ -414,6 +417,75 @@ def run_nsga2(pop_size=100, num_generations=50):
     )
     
     return population, logbook, hof
+
+# ------- Simple experiment I/O helpers -------
+
+def _ensure_dir(path: str):
+    if path and not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
+
+
+def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None):
+    """Save structured outputs for an experiment run.
+
+    - pareto.csv: solutions on the Pareto front
+    - logbook.csv: DEAP logbook stats (best-effort)
+    - config.used.yaml: copy of the YAML used for reproducibility
+    """
+    _ensure_dir(out_dir)
+    pareto_csv = os.path.join(out_dir, "pareto.csv")
+    pareto_df.to_csv(pareto_csv, index=False)
+
+    # Save logbook if convertible
+    try:
+        pd.DataFrame(logbook).to_csv(os.path.join(out_dir, "logbook.csv"), index=False)
+    except Exception:
+        pass
+
+    if config_path and os.path.isfile(config_path):
+        try:
+            import shutil
+            shutil.copy(config_path, os.path.join(out_dir, "config.used.yaml"))
+        except Exception:
+            pass
+
+    return out_dir
+
+
+def load_data_from_config(cfg: dict):
+    """Load environmental data based on config dict.
+
+    Supports synthetic generation (default) and simple CSV ingestion with
+    columns: irradiance, wind_speed, demand (hourly). Aggregates to daily.
+    """
+    data_cfg = (cfg or {}).get("data", {})
+    source = data_cfg.get("source", "synthetic")
+    aggregate = data_cfg.get("aggregate_to_daily", True)
+
+    if source == "csv":
+        csv_path = data_cfg.get("csv_path")
+        if not csv_path:
+            raise ValueError("data.source is 'csv' but data.csv_path is not set in config")
+        df = pd.read_csv(csv_path)
+        irr = df["irradiance"].values
+        wind = df["wind_speed"].values
+        dem = df["demand"].values
+        if not aggregate:
+            raise ValueError("Hourly simulation not implemented; set aggregate_to_daily: true")
+        daily_irr = np.array([irr[i:i+24].mean() for i in range(0, len(irr), 24)])
+        daily_wind = np.array([wind[i:i+24].mean() for i in range(0, len(wind), 24)])
+        daily_dem = np.array([dem[i:i+24].sum() for i in range(0, len(dem), 24)])
+        return daily_irr, daily_wind, daily_dem
+
+    # Default: synthetic
+    days = int(data_cfg.get("days", 365))
+    h_irr = generate_hourly_solar_irradiance(days)
+    h_wind = generate_hourly_wind_speed(days)
+    h_dem = generate_hourly_energy_demand(days)
+    daily_irr = np.array([h_irr[i:i+24].mean() for i in range(0, len(h_irr), 24)])
+    daily_wind = np.array([h_wind[i:i+24].mean() for i in range(0, len(h_wind), 24)])
+    daily_dem = np.array([h_dem[i:i+24].sum() for i in range(0, len(h_dem), 24)])
+    return daily_irr, daily_wind, daily_dem
 
 # Generate environmental data
 days_to_simulate = 365  # One year
@@ -427,20 +499,60 @@ daily_wind_speed = np.array([hourly_wind_speed[i:i+24].mean() for i in range(0, 
 daily_energy_demand = np.array([hourly_energy_demand[i:i+24].sum() for i in range(0, len(hourly_energy_demand), 24)])
 
 if __name__ == "__main__":
-    # Run the optimization
-    pop_size = 100
-    num_generations = 50
-    final_population, logbook, pareto_front = run_nsga2(pop_size, num_generations)
-    
-    # Analyze and visualize results
+    parser = argparse.ArgumentParser(description="EvoGrid NSGA-II experiments")
+    parser.add_argument("--config", type=str, default="config.yaml", help="Path to YAML config file")
+    parser.add_argument("--output-dir", type=str, default=None, help="Directory to save outputs (optional)")
+    parser.add_argument("--csv-path", type=str, default=None, help="Optional CSV path for data ingestion")
+    args = parser.parse_args()
+
+    # Load YAML config (if present)
+    cfg = {}
+    if args.config and os.path.isfile(args.config):
+        try:
+            from config import load_config, apply_to_main
+            cfg = load_config(args.config)
+            # Apply config to globals
+            apply_to_main(cfg, main_mod=__import__(__name__))
+        except Exception as e:
+            print(f"Warning: failed to load config '{args.config}': {e}")
+
+    # Parameters are taken exclusively from YAML now
+    tag = cfg.get("tag", "run")
+    seed = cfg.get("seed", 42)
+    nsga_cfg = cfg.get("nsga", {})
+    pop_size = int(nsga_cfg.get("pop_size", 100))
+    num_generations = int(nsga_cfg.get("num_generations", 50))
+    cxpb = float(nsga_cfg.get("cxpb", 0.7))
+    mutpb = float(nsga_cfg.get("mutpb", 0.2))
+
+    # Seed for reproducibility
+    np.random.seed(seed)
+    random.seed(seed)
+
+    # Data config setup (support CLI csv override)
+    cfg.setdefault("data", {})
+    if args.csv_path:
+        cfg["data"]["source"] = "csv"
+        cfg["data"]["csv_path"] = args.csv_path
+
+    # Override module-level daily_* with configured data
+    daily_solar_irradiance, daily_wind_speed, daily_energy_demand = load_data_from_config(cfg)
+
+    # Run optimization
+    final_population, logbook, pareto_front = run_nsga2(pop_size, num_generations, cxpb=cxpb, mutpb=mutpb)
+
+    # Analyze and visualize
     pareto_solutions_df = analyze_results(final_population, pareto_front)
 
-    # Set the output directory (modify as needed)
-    output_dir = ""
+    # Prepare output directory
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_out = cfg.get("output", {}).get("base_dir", "results")
+    run_dir = args.output_dir or os.path.join(base_out, tag, timestamp)
+    save_run_outputs(pareto_solutions_df, logbook, run_dir, args.config if os.path.isfile(args.config) else None)
 
-    # Visualize results
-    visualize_pareto_front(pareto_solutions_df, output_dir)
-    visualize_solutions_composition(pareto_solutions_df, output_dir)
+    # Visualizations
+    visualize_pareto_front(pareto_solutions_df, os.path.join(run_dir, "pareto"))
+    visualize_solutions_composition(pareto_solutions_df, os.path.join(run_dir, "composition"))
 
     # Find the best trade-off solution for further analysis
     cost_norm = (pareto_solutions_df['cost'] - pareto_solutions_df['cost'].min()) / (pareto_solutions_df['cost'].max() - pareto_solutions_df['cost'].min())
@@ -450,7 +562,17 @@ if __name__ == "__main__":
     best_tradeoff_sol = pareto_solutions_df.loc[pareto_solutions_df['distance'].idxmin()]
 
     # Perform sensitivity analysis on the best trade-off solution
-    sensitivity_results = perform_sensitivity_analysis(best_tradeoff_sol, output_dir)
+    # Convert the selected Series into the dict format expected by utils.perform_sensitivity_analysis
+    best_tradeoff_payload = {
+        "name": "Best Trade-off",
+        "solar_panels": int(best_tradeoff_sol["solar_panels"]),
+        "wind_turbines": int(best_tradeoff_sol["wind_turbines"]),
+        "batteries": int(best_tradeoff_sol["batteries"]),
+        "cost": float(best_tradeoff_sol["cost"]),
+        "reliability": float(best_tradeoff_sol["reliability"]),
+        "environmental_impact": float(best_tradeoff_sol["environmental_impact"]),
+    }
+    sensitivity_results = perform_sensitivity_analysis(best_tradeoff_payload, os.path.join(run_dir, "sensitivity"))
     
     # Define the selected solutions from Pareto front for detailed analysis
     solutions = [
@@ -463,7 +585,8 @@ if __name__ == "__main__":
     # Analyze each selected solution
     analysis_results = []
     for solution in solutions:
-        result = analyze_solution_detail(solution)
+        result = analyze_solution_detail(solution, save_dir=os.path.join(run_dir, "details"))
         analysis_results.append(result)
     
-    print("\nAnalysis complete! All visualizations have been saved.")
+    print("\nAnalysis complete! All visualizations and CSVs have been saved in:")
+    print(run_dir)

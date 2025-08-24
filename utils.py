@@ -235,10 +235,11 @@ def perform_sensitivity_analysis(base_solution, save_path=None):
     
     return results
 
-def analyze_solution_detail(solution):
+def analyze_solution_detail(solution, save_dir=None):
     """Perform detailed analysis of a single solution."""
     # Import necessary modules and variables from main
     import main
+    import os
     
     # Extract parameters
     name = solution["name"]
@@ -389,12 +390,16 @@ def analyze_solution_detail(solution):
     ax5.set_title('Energy Production Distribution')
     
     plt.tight_layout()
-    plt.savefig(f"{name.lower().replace(' ', '_')}_detailed_analysis.png", dpi=300, bbox_inches='tight')
+    filename = f"{name.lower().replace(' ', '_')}_detailed_analysis.png"
+    if save_dir:
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir, exist_ok=True)
+        out_path = os.path.join(save_dir, filename)
+    else:
+        out_path = filename
+    plt.savefig(out_path, dpi=300, bbox_inches='tight')
     plt.show()
-    
-    # Create comparative visualization of all solutions
-    plt.figure(figsize=(15, 10))
-    
+
     return {"name": name, "cost": cost, "reliability": reliability, "env_impact": env_impact, 
             "solar_energy": total_solar, "wind_energy": total_wind, "deficit": total_deficit, 
             "curtailed": total_curtailed, "deficit_days": days_with_deficit}
@@ -408,9 +413,10 @@ def visualize_solutions_composition(pareto_solutions, save_path=None):
     pareto_solutions_sorted = pareto_solutions.sort_values('cost')
     
     # Stacked bar chart of system components
-    solar_capacity = pareto_solutions_sorted['solar_panels'] * SOLAR_PANEL_CAPACITY
-    wind_capacity = pareto_solutions_sorted['wind_turbines'] * WIND_TURBINE_CAPACITY
-    battery_capacity = pareto_solutions_sorted['batteries'] * BATTERY_CAPACITY
+    import main as m
+    solar_capacity = pareto_solutions_sorted['solar_panels'] * m.SOLAR_PANEL_CAPACITY
+    wind_capacity = pareto_solutions_sorted['wind_turbines'] * m.WIND_TURBINE_CAPACITY
+    battery_capacity = pareto_solutions_sorted['batteries'] * m.BATTERY_CAPACITY
     
     solution_ids = pareto_solutions_sorted['id']
     

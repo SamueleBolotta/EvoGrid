@@ -1,0 +1,45 @@
+tag: baseline
+seed: 42
+
+nsga:
+  pop_size: 100
+  num_generations: 50
+  cxpb: 0.7
+  mutpb: 0.2
+
+bounds:
+  solar_panels: [0, 500]
+  wind_turbines: [0, 50]
+  batteries: [0, 50]
+
+system:
+  solar:
+    capacity_kw: 0.4
+    cost: 300
+    land_m2: 3
+    lifecycle_emissions: 40
+  wind:
+    capacity_kw: 3.0
+    cost: 6000
+    land_m2: 100
+    lifecycle_emissions: 800
+  battery:
+    capacity_kwh: 5.0
+    cost: 2000
+    cycle_life: 4000
+    lifecycle_emissions: 150
+  constraints:
+    max_land_m2: 10000
+    max_budget: 200000
+    min_energy_kwh_per_day: 50
+  project_lifetime_years: 20
+
+data:
+  source: synthetic   # synthetic | csv
+  days: 365
+  csv_path: ""
+  aggregate_to_daily: true
+
+output:
+  base_dir: results
+
