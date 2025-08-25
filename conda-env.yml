@@ -1,0 +1,14 @@
+name: evogrid
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scipy
+  - deap
+  - tqdm
+  - pip
