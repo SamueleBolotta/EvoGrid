@@ -382,6 +382,60 @@ toolbox.register("mutate", tools.mutUniformInt, low=[BOUNDS[i][0] for i in range
                  up=[BOUNDS[i][1] for i in range(3)], indpb=0.2)
 toolbox.register("select", tools.selNSGA2)
 
+# ------- Weighted Sum Baseline Setup -------
+
+# Create single-objective fitness and individual classes
+creator.create("FitnessWeighted", base.Fitness, weights=(-1.0,))  # Single objective minimization
+creator.create("IndividualWeighted", list, fitness=creator.FitnessWeighted)
+
+# Normalization bounds (estimate from problem domain)
+COST_MIN, COST_MAX = 0, 500000
+RELIABILITY_MIN, RELIABILITY_MAX = 0.0, 1.0  
+IMPACT_MIN, IMPACT_MAX = 0.0, 1.0
+
+def normalize(value, vmin, vmax):
+    """Normalize value to [0,1] range."""
+    if vmax - vmin == 0:
+        return 0.0
+    return (value - vmin) / (vmax - vmin)
+
+def evaluate_weighted(individual, w_cost=0.6, w_reliability=0.3, w_impact=0.1):
+    """Evaluate individual using weighted sum of normalized objectives."""
+    # Check constraints first
+    if not check_constraints(individual):
+        return (float('inf'),)  # Heavily penalize infeasible solutions
+    
+    # Calculate objectives
+    cost = calculate_total_cost(individual)
+    reliability = calculate_reliability(individual, daily_solar_irradiance, daily_wind_speed, daily_energy_demand)
+    environmental_impact = calculate_environmental_impact(individual)
+    
+    # Cache true objective metrics on the individual for later reuse
+    try:
+        individual._true_cost = float(cost)
+        individual._true_reliability = float(reliability)
+        individual._true_impact = float(environmental_impact)
+    except Exception:
+        pass
+    
+    # Normalize objectives
+    cost_norm = normalize(cost, COST_MIN, COST_MAX)
+    reliability_norm = normalize(reliability, RELIABILITY_MIN, RELIABILITY_MAX)
+    impact_norm = normalize(environmental_impact, IMPACT_MIN, IMPACT_MAX)
+    
+    # Weighted sum (minimize cost and impact, maximize reliability)
+    weighted_objective = w_cost * cost_norm + w_impact * impact_norm - w_reliability * reliability_norm
+    
+    return (weighted_objective,)
+
+# Create weighted sum individual function
+def create_individual_weighted():
+    return creator.IndividualWeighted([
+        random.randint(BOUNDS[0][0], BOUNDS[0][1]),  # num_solar_panels
+        random.randint(BOUNDS[1][0], BOUNDS[1][1]),  # num_wind_turbines
+        random.randint(BOUNDS[2][0], BOUNDS[2][1])   # num_batteries
+    ])
+
 # ------- Run Optimization -------
 
 def run_nsga2(pop_size=100, num_generations=50, cxpb=0.7, mutpb=0.2):
@@ -418,6 +472,50 @@ def run_nsga2(pop_size=100, num_generations=50, cxpb=0.7, mutpb=0.2):
     
     return population, logbook, hof
 
+def run_weighted_sum_ga(pop_size=100, num_generations=50, cxpb=0.7, mutpb=0.2, 
+                       w_cost=0.6, w_reliability=0.3, w_impact=0.1):
+    """Run GA with weighted sum approach."""
+    
+    # Create new toolbox for weighted sum
+    toolbox_weighted = base.Toolbox()
+    toolbox_weighted.register("individual", create_individual_weighted)
+    toolbox_weighted.register("population", tools.initRepeat, list, toolbox_weighted.individual)
+    toolbox_weighted.register("evaluate", evaluate_weighted, 
+                            w_cost=w_cost, w_reliability=w_reliability, w_impact=w_impact)
+    toolbox_weighted.register("mate", tools.cxTwoPoint)
+    toolbox_weighted.register("mutate", tools.mutUniformInt, 
+                            low=[BOUNDS[i][0] for i in range(3)], 
+                            up=[BOUNDS[i][1] for i in range(3)], indpb=0.2)
+    toolbox_weighted.register("select", tools.selTournament, tournsize=3)
+    
+    # Initialize statistics
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    stats.register("avg", np.mean)
+    stats.register("min", np.min)
+    
+    # Create and evaluate initial population
+    population = toolbox_weighted.population(n=pop_size)
+    fitnesses = list(map(toolbox_weighted.evaluate, population))
+    for ind, fit in zip(population, fitnesses):
+        ind.fitness.values = fit
+    
+    # Hall of fame for best solutions
+    hof = tools.HallOfFame(1)
+    
+    print(f"Starting Weighted Sum GA (w_cost={w_cost}, w_reliability={w_reliability}, w_impact={w_impact})...")
+    population, logbook = algorithms.eaSimple(
+        population, 
+        toolbox_weighted,
+        cxpb=cxpb,
+        mutpb=mutpb,
+        ngen=num_generations,
+        stats=stats,
+        halloffame=hof,
+        verbose=True
+    )
+    
+    return population, logbook, hof
+
 # ------- Simple experiment I/O helpers -------
 
 def _ensure_dir(path: str):
@@ -425,12 +523,13 @@ def _ensure_dir(path: str):
         os.makedirs(path, exist_ok=True)
 
 
-def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None):
+def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None, weighted_df: pd.DataFrame = None):
     """Save structured outputs for an experiment run.
 
     - pareto.csv: solutions on the Pareto front
     - logbook.csv: DEAP logbook stats (best-effort)
     - config.used.yaml: copy of the YAML used for reproducibility
+    - weighted_solutions.csv: best individuals from weighted-sum baseline (if provided)
     """
     _ensure_dir(out_dir)
     pareto_csv = os.path.join(out_dir, "pareto.csv")
@@ -441,6 +540,13 @@ def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None):
         pd.DataFrame(logbook).to_csv(os.path.join(out_dir, "logbook.csv"), index=False)
     except Exception:
         pass
+
+    # Save weighted baseline results if provided
+    if weighted_df is not None:
+        try:
+            weighted_df.to_csv(os.path.join(out_dir, "weighted_solutions.csv"), index=False)
+        except Exception:
+            pass
 
     if config_path and os.path.isfile(config_path):
         try:
@@ -525,6 +631,31 @@ if __name__ == "__main__":
     cxpb = float(nsga_cfg.get("cxpb", 0.7))
     mutpb = float(nsga_cfg.get("mutpb", 0.2))
 
+    # Weighted-sum baseline config (defaults mirror NSGA-II unless overridden)
+    weighted_cfg = cfg.get("weighted", {})
+    w_pop_size = int(weighted_cfg.get("pop_size", pop_size))
+    w_num_generations = int(weighted_cfg.get("num_generations", num_generations))
+    w_cxpb = float(weighted_cfg.get("cxpb", cxpb))
+    w_mutpb = float(weighted_cfg.get("mutpb", mutpb))
+    weights_cfg = weighted_cfg.get("weights", [0.6, 0.3, 0.1])
+    try:
+        w_cost, w_reliability, w_impact = [float(x) for x in weights_cfg]
+    except Exception:
+        w_cost, w_reliability, w_impact = 0.6, 0.3, 0.1
+
+    # Optional normalization bounds override
+    norm_cfg = weighted_cfg.get("normalization", {})
+    if isinstance(norm_cfg, dict):
+        cost_bounds = norm_cfg.get("cost")
+        reli_bounds = norm_cfg.get("reliability")
+        impact_bounds = norm_cfg.get("impact")
+        if cost_bounds and len(cost_bounds) == 2:
+            COST_MIN, COST_MAX = float(cost_bounds[0]), float(cost_bounds[1])
+        if reli_bounds and len(reli_bounds) == 2:
+            RELIABILITY_MIN, RELIABILITY_MAX = float(reli_bounds[0]), float(reli_bounds[1])
+        if impact_bounds and len(impact_bounds) == 2:
+            IMPACT_MIN, IMPACT_MAX = float(impact_bounds[0]), float(impact_bounds[1])
+
     # Seed for reproducibility
     np.random.seed(seed)
     random.seed(seed)
@@ -538,19 +669,60 @@ if __name__ == "__main__":
     # Override module-level daily_* with configured data
     daily_solar_irradiance, daily_wind_speed, daily_energy_demand = load_data_from_config(cfg)
 
-    # Run optimization
-    final_population, logbook, pareto_front = run_nsga2(pop_size, num_generations, cxpb=cxpb, mutpb=mutpb)
+    # Run both optimization approaches
+    print("="*80)
+    print("RUNNING NSGA-II (Multi-objective)")
+    print("="*80)
+    nsga_population, nsga_logbook, nsga_pareto = run_nsga2(pop_size, num_generations, cxpb=cxpb, mutpb=mutpb)
 
-    # Analyze and visualize
-    pareto_solutions_df = analyze_results(final_population, pareto_front)
+    print("\n" + "="*80)
+    print("RUNNING WEIGHTED SUM BASELINE (Single-objective)")
+    print("="*80)
+    weighted_population, weighted_logbook, weighted_hof = run_weighted_sum_ga(
+        w_pop_size, w_num_generations, cxpb=w_cxpb, mutpb=w_mutpb,
+        w_cost=w_cost, w_reliability=w_reliability, w_impact=w_impact)
 
-    # Prepare output directory
+    # Analyze results
+    pareto_solutions_df = analyze_results(nsga_population, nsga_pareto)
+
+    # Save results and create visualizations
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base_out = cfg.get("output", {}).get("base_dir", "results")
     run_dir = args.output_dir or os.path.join(base_out, tag, timestamp)
-    save_run_outputs(pareto_solutions_df, logbook, run_dir, args.config if os.path.isfile(args.config) else None)
+    save_run_outputs(pareto_solutions_df, nsga_logbook, run_dir, args.config if os.path.isfile(args.config) else None)
 
-    # Visualizations
+    # Create comparison visualization
+    # After NSGA-II:
+    pareto_solutions_df = analyze_results(nsga_population, nsga_pareto)
+
+    # After Weighted-sum GA (assuming you have weighted_hof or a list of selected individuals):
+    weighted_records = []
+    for i, ind in enumerate(weighted_hof):  # or [best_ind] if single best
+        cost_cached = getattr(ind, "_true_cost", None)
+        reli_cached = getattr(ind, "_true_reliability", None)
+        impact_cached = getattr(ind, "_true_impact", None)
+        cost_val = cost_cached if cost_cached is not None else calculate_total_cost(ind)
+        reli_val = reli_cached if reli_cached is not None else calculate_reliability(ind, daily_solar_irradiance, daily_wind_speed, daily_energy_demand)
+        impact_val = impact_cached if impact_cached is not None else calculate_environmental_impact(ind)
+        weighted_records.append({
+            'id': i,
+            'solar_panels': ind[0],
+            'wind_turbines': ind[1],
+            'batteries': ind[2],
+            'cost': cost_val,
+            'reliability': reli_val,
+            'environmental_impact': impact_val
+        })
+    weighted_df = pd.DataFrame(weighted_records)
+
+    # Persist all outputs (Pareto + weighted) using the common saver
+    save_run_outputs(pareto_solutions_df, nsga_logbook, run_dir, args.config if os.path.isfile(args.config) else None, weighted_df=weighted_df)
+
+    # Compare without circular imports
+    from utils import compare_methods
+    compare_methods(pareto_solutions_df, weighted_df, os.path.join(run_dir, "methods"))
+
+    # Continue with existing visualizations...
     visualize_pareto_front(pareto_solutions_df, os.path.join(run_dir, "pareto"))
     visualize_solutions_composition(pareto_solutions_df, os.path.join(run_dir, "composition"))
 

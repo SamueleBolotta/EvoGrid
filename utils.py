@@ -475,3 +475,35 @@ def visualize_solutions_composition(pareto_solutions, save_path=None):
         plt.savefig(f"{save_path}_technology_influence.png", dpi=300, bbox_inches='tight')
     
     plt.show()
+
+def compare_methods(nsga_df, weighted_df, save_path=None):
+    """Plot NSGA-II Pareto solutions vs. Weighted-sum solutions.
+    Expects DataFrames with columns: ['cost','reliability','environmental_impact'].
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    nsga_vals = nsga_df[['cost','reliability','environmental_impact']].values
+    weighted_vals = weighted_df[['cost','reliability','environmental_impact']].values
+
+    plt.figure(figsize=(12, 4))
+
+    plt.subplot(131)
+    plt.scatter(nsga_vals[:,0], nsga_vals[:,1], label='NSGA-II', alpha=0.7)
+    plt.scatter(weighted_vals[:,0], weighted_vals[:,1], label='Weighted Sum', marker='x', s=100)
+    plt.xlabel('Cost ($)'); plt.ylabel('Reliability'); plt.legend(); plt.grid(True, alpha=0.3)
+
+    plt.subplot(132)
+    plt.scatter(nsga_vals[:,0], nsga_vals[:,2], label='NSGA-II', alpha=0.7)
+    plt.scatter(weighted_vals[:,0], weighted_vals[:,2], label='Weighted Sum', marker='x', s=100)
+    plt.xlabel('Cost ($)'); plt.ylabel('Environmental Impact'); plt.legend(); plt.grid(True, alpha=0.3)
+
+    plt.subplot(133)
+    plt.scatter(nsga_vals[:,1], nsga_vals[:,2], label='NSGA-II', alpha=0.7)
+    plt.scatter(weighted_vals[:,1], weighted_vals[:,2], label='Weighted Sum', marker='x', s=100)
+    plt.xlabel('Reliability'); plt.ylabel('Environmental Impact'); plt.legend(); plt.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(f"{save_path}_comparison.png", dpi=300, bbox_inches='tight')
+    plt.show()
