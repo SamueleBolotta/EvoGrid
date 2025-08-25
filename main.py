@@ -19,6 +19,7 @@ from utils import (
     perform_sensitivity_analysis,
     analyze_solution_detail
 )
+from mopso import run_mopso
 
 # Set random seed for reproducibility
 np.random.seed(42)
@@ -349,6 +350,14 @@ toolbox = base.Toolbox()
 # Define bounds for each decision variable
 BOUNDS = [(0, 500), (0, 50), (0, 50)]  # (solar panels, wind turbines, batteries)
 
+# Default MOPSO parameters (will be overridden by config)
+MOPSO_SWARM_SIZE = 100
+MOPSO_MAX_ITERATIONS = 50
+MOPSO_ARCHIVE_SIZE = 100
+MOPSO_INERTIA_WEIGHT = 0.5
+MOPSO_COGNITIVE_COEFF = 1.5
+MOPSO_SOCIAL_COEFF = 1.5
+
 # Register the individual and population creation functions
 def create_individual():
     return creator.Individual([
@@ -516,6 +525,30 @@ def run_weighted_sum_ga(pop_size=100, num_generations=50, cxpb=0.7, mutpb=0.2,
     
     return population, logbook, hof
 
+def run_mopso_optimization(swarm_size=100, max_iterations=50, archive_size=100,
+                          inertia_weight=0.5, cognitive_coeff=1.5, social_coeff=1.5):
+    """Run the MOPSO algorithm."""
+    
+    def mopso_evaluate(position):
+        """Evaluate function for MOPSO (expects position as list)."""
+        individual = position  # position is already a list [solar, wind, batteries]
+        return evaluate(individual)
+    
+    print("Starting MOPSO optimization...")
+    pareto_solutions, mopso_instance = run_mopso(
+        bounds=BOUNDS,
+        evaluate_func=mopso_evaluate,
+        swarm_size=swarm_size,
+        max_iterations=max_iterations,
+        archive_size=archive_size,
+        w=inertia_weight,
+        c1=cognitive_coeff,
+        c2=social_coeff,
+        verbose=True
+    )
+    
+    return pareto_solutions, mopso_instance
+
 # ------- Simple experiment I/O helpers -------
 
 def _ensure_dir(path: str):
@@ -523,13 +556,14 @@ def _ensure_dir(path: str):
         os.makedirs(path, exist_ok=True)
 
 
-def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None, weighted_df: pd.DataFrame = None):
+def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None, weighted_df: pd.DataFrame = None, mopso_df: pd.DataFrame = None):
     """Save structured outputs for an experiment run.
 
     - pareto.csv: solutions on the Pareto front
     - logbook.csv: DEAP logbook stats (best-effort)
     - config.used.yaml: copy of the YAML used for reproducibility
     - weighted_solutions.csv: best individuals from weighted-sum baseline (if provided)
+    - mopso_solutions.csv: Pareto front from MOPSO algorithm (if provided)
     """
     _ensure_dir(out_dir)
     pareto_csv = os.path.join(out_dir, "pareto.csv")
@@ -545,6 +579,13 @@ def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None, 
     if weighted_df is not None:
         try:
             weighted_df.to_csv(os.path.join(out_dir, "weighted_solutions.csv"), index=False)
+        except Exception:
+            pass
+
+    # Save MOPSO results if provided
+    if mopso_df is not None:
+        try:
+            mopso_df.to_csv(os.path.join(out_dir, "mopso_solutions.csv"), index=False)
         except Exception:
             pass
 
@@ -643,6 +684,15 @@ if __name__ == "__main__":
     except Exception:
         w_cost, w_reliability, w_impact = 0.6, 0.3, 0.1
 
+    # MOPSO config (defaults mirror NSGA-II unless overridden)
+    mopso_cfg = cfg.get("mopso", {})
+    mopso_swarm_size = int(mopso_cfg.get("swarm_size", pop_size))
+    mopso_max_iterations = int(mopso_cfg.get("max_iterations", num_generations))
+    mopso_archive_size = int(mopso_cfg.get("archive_size", pop_size))
+    mopso_inertia_weight = float(mopso_cfg.get("inertia_weight", 0.5))
+    mopso_cognitive_coeff = float(mopso_cfg.get("cognitive_coeff", 1.5))
+    mopso_social_coeff = float(mopso_cfg.get("social_coeff", 1.5))
+
     # Optional normalization bounds override
     norm_cfg = weighted_cfg.get("normalization", {})
     if isinstance(norm_cfg, dict):
@@ -676,6 +726,18 @@ if __name__ == "__main__":
     nsga_population, nsga_logbook, nsga_pareto = run_nsga2(pop_size, num_generations, cxpb=cxpb, mutpb=mutpb)
 
     print("\n" + "="*80)
+    print("RUNNING MOPSO (Multi-objective)")
+    print("="*80)
+    mopso_pareto_solutions, mopso_instance = run_mopso_optimization(
+        swarm_size=mopso_swarm_size, 
+        max_iterations=mopso_max_iterations,
+        archive_size=mopso_archive_size,
+        inertia_weight=mopso_inertia_weight,
+        cognitive_coeff=mopso_cognitive_coeff,
+        social_coeff=mopso_social_coeff
+    )
+
+    print("\n" + "="*80)
     print("RUNNING WEIGHTED SUM BASELINE (Single-objective)")
     print("="*80)
     weighted_population, weighted_logbook, weighted_hof = run_weighted_sum_ga(
@@ -684,6 +746,9 @@ if __name__ == "__main__":
 
     # Analyze results
     pareto_solutions_df = analyze_results(nsga_population, nsga_pareto)
+    
+    # Convert MOPSO results to DataFrame
+    mopso_pareto_df = pd.DataFrame(mopso_instance.get_pareto_front())
 
     # Save results and create visualizations
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -715,12 +780,15 @@ if __name__ == "__main__":
         })
     weighted_df = pd.DataFrame(weighted_records)
 
-    # Persist all outputs (Pareto + weighted) using the common saver
-    save_run_outputs(pareto_solutions_df, nsga_logbook, run_dir, args.config if os.path.isfile(args.config) else None, weighted_df=weighted_df)
+    # Persist all outputs (Pareto + weighted + MOPSO) using the common saver
+    save_run_outputs(pareto_solutions_df, nsga_logbook, run_dir, args.config if os.path.isfile(args.config) else None, weighted_df=weighted_df, mopso_df=mopso_pareto_df)
 
     # Compare without circular imports
-    from utils import compare_methods
-    compare_methods(pareto_solutions_df, weighted_df, os.path.join(run_dir, "methods"))
+    from utils import compare_methods, compare_all_methods_detailed
+    compare_methods(pareto_solutions_df, weighted_df, os.path.join(run_dir, "methods"), mopso_df=mopso_pareto_df)
+    
+    # Detailed comparison including MOPSO
+    comparison_metrics = compare_all_methods_detailed(pareto_solutions_df, weighted_df, mopso_pareto_df, os.path.join(run_dir, "methods"))
 
     # Continue with existing visualizations...
     visualize_pareto_front(pareto_solutions_df, os.path.join(run_dir, "pareto"))

@@ -18,6 +18,14 @@ weighted:
     reliability: [0.0, 1.0]
     impact: [0.0, 1.0]
 
+mopso:
+  swarm_size: 100
+  max_iterations: 50
+  archive_size: 100
+  inertia_weight: 0.5
+  cognitive_coeff: 1.5
+  social_coeff: 1.5
+
 bounds:
   solar_panels: [0, 500]
   wind_turbines: [0, 50]

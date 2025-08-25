@@ -57,5 +57,15 @@ def apply_to_main(cfg: dict, main_mod):
             tuple(b.get("wind_turbines", main_mod.BOUNDS[1])),
             tuple(b.get("batteries", main_mod.BOUNDS[2])),
         ]
+    
+    # MOPSO parameters (add as module-level variables for consistency)
+    mopso_cfg = cfg.get("mopso", {})
+    if hasattr(main_mod, '__dict__'):  # Ensure we can add attributes
+        main_mod.MOPSO_SWARM_SIZE = mopso_cfg.get("swarm_size", 100)
+        main_mod.MOPSO_MAX_ITERATIONS = mopso_cfg.get("max_iterations", 50)
+        main_mod.MOPSO_ARCHIVE_SIZE = mopso_cfg.get("archive_size", 100)
+        main_mod.MOPSO_INERTIA_WEIGHT = mopso_cfg.get("inertia_weight", 0.5)
+        main_mod.MOPSO_COGNITIVE_COEFF = mopso_cfg.get("cognitive_coeff", 1.5)
+        main_mod.MOPSO_SOCIAL_COEFF = mopso_cfg.get("social_coeff", 1.5)
 
 
