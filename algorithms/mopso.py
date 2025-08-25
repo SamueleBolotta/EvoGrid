@@ -364,15 +364,15 @@ class MOPSO:
         return pareto_solutions
 
 
-def run_mopso(bounds: List[Tuple[int, int]],
-              evaluate_func,
-              swarm_size: int = 100,
-              max_iterations: int = 100,
-              archive_size: int = 100,
-              w: float = 0.5,
-              c1: float = 1.5,
-              c2: float = 1.5,
-              verbose: bool = True) -> Tuple[List[Particle], MOPSO]:
+def run_mopso_optimization(bounds: List[Tuple[int, int]],
+                          evaluate_func,
+                          swarm_size: int = 100,
+                          max_iterations: int = 100,
+                          archive_size: int = 100,
+                          w: float = 0.5,
+                          c1: float = 1.5,
+                          c2: float = 1.5,
+                          verbose: bool = True) -> Tuple[List[Particle], MOPSO]:
     """
     Convenience function to run MOPSO optimization.
     
@@ -398,3 +398,9 @@ def run_mopso(bounds: List[Tuple[int, int]],
     pareto_solutions = mopso.optimize(evaluate_func, max_iterations, verbose)
     
     return pareto_solutions, mopso
+
+
+# Keep the old function name for backward compatibility
+def run_mopso(*args, **kwargs):
+    """Backward compatibility function."""
+    return run_mopso_optimization(*args, **kwargs)
