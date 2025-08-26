@@ -8,9 +8,12 @@ detailed solution analysis.
 from .results_analyzer import analyze_results
 from .sensitivity_analysis import perform_sensitivity_analysis
 from .solution_analysis import analyze_solution_detail
+from .algorithm_comparison import AlgorithmComparison, run_multi_run_comparison
 
 __all__ = [
     'analyze_results',
     'perform_sensitivity_analysis', 
-    'analyze_solution_detail'
+    'analyze_solution_detail',
+    'AlgorithmComparison',
+    'run_multi_run_comparison'
 ]
