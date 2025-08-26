@@ -28,7 +28,6 @@ from visualization import (
 from config import load_config, apply_to_main
 
 # Set random seed for reproducibility
-
 seed = 42
 np.random.seed(seed)
 random.seed(seed)
@@ -77,6 +76,78 @@ def run_mopso_with_params(bounds, evaluate_func, swarm_size=100, max_iterations=
     )
     
     return pareto_solutions, mopso_instance
+
+
+def combine_pareto_fronts(*solution_dfs):
+    """
+    Combine solutions from multiple algorithms and apply Pareto dominance filtering.
+    
+    Args:
+        *solution_dfs: Variable number of DataFrames containing solutions with columns:
+                      ['solar_panels', 'wind_turbines', 'batteries', 'cost', 'reliability', 'environmental_impact']
+    
+    Returns:
+        DataFrame with unified Pareto optimal solutions
+    """
+    if not solution_dfs:
+        return pd.DataFrame()
+    
+    # Combine all solutions
+    all_solutions = []
+    algorithm_names = ['NSGA-II', 'MOPSO', 'Weighted-Sum']  # Default names
+    
+    for i, df in enumerate(solution_dfs):
+        if df is not None and not df.empty:
+            df_copy = df.copy()
+            # Add source algorithm identifier
+            algorithm_name = algorithm_names[i] if i < len(algorithm_names) else f'Algorithm_{i}'
+            df_copy['source_algorithm'] = algorithm_name
+            all_solutions.append(df_copy)
+    
+    if not all_solutions:
+        return pd.DataFrame()
+    
+    combined_df = pd.concat(all_solutions, ignore_index=True)
+    
+    # Apply Pareto dominance filtering
+    pareto_optimal = []
+    solutions = combined_df[['cost', 'reliability', 'environmental_impact']].values
+    
+    for i, sol1 in enumerate(solutions):
+        is_dominated = False
+        for j, sol2 in enumerate(solutions):
+            if i != j:
+                # Check if sol1 is dominated by sol2
+                # For cost and env_impact: lower is better (minimize)
+                # For reliability: higher is better (maximize)
+                if (sol2[0] <= sol1[0] and  # cost
+                    sol2[1] >= sol1[1] and  # reliability  
+                    sol2[2] <= sol1[2] and  # environmental_impact
+                    (sol2[0] < sol1[0] or sol2[1] > sol1[1] or sol2[2] < sol1[2])):
+                    is_dominated = True
+                    break
+        
+        if not is_dominated:
+            pareto_optimal.append(i)
+    
+    # Create unified Pareto front DataFrame
+    unified_pareto = combined_df.iloc[pareto_optimal].copy()
+    unified_pareto.reset_index(drop=True, inplace=True)
+    unified_pareto['id'] = range(len(unified_pareto))
+    
+    print(f"\nUnified Pareto Front Statistics:")
+    print(f"Total solutions considered: {len(combined_df)}")
+    print(f"Pareto optimal solutions: {len(unified_pareto)}")
+    
+    # Show contribution by algorithm
+    if 'source_algorithm' in unified_pareto.columns:
+        contribution = unified_pareto['source_algorithm'].value_counts()
+        print(f"Contribution by algorithm:")
+        for algo, count in contribution.items():
+            percentage = (count / len(unified_pareto)) * 100
+            print(f"  • {algo}: {count} solutions ({percentage:.1f}%)")
+    
+    return unified_pareto
 
 
 def extract_representative_solutions(pareto_df):
@@ -166,7 +237,8 @@ def extract_representative_solutions(pareto_df):
 
 
 def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None, 
-                    weighted_df: pd.DataFrame = None, mopso_df: pd.DataFrame = None):
+                    weighted_df: pd.DataFrame = None, mopso_df: pd.DataFrame = None, 
+                    nsga_df: pd.DataFrame = None):
     """Save structured outputs for an experiment run."""
     
     def _ensure_dir(path: str):
@@ -194,6 +266,13 @@ def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None,
     if mopso_df is not None:
         try:
             mopso_df.to_csv(os.path.join(out_dir, "mopso_solutions.csv"), index=False)
+        except Exception:
+            pass
+
+    # Save NSGA-II results if provided
+    if nsga_df is not None:
+        try:
+            nsga_df.to_csv(os.path.join(out_dir, "nsga2_solutions.csv"), index=False)
         except Exception:
             pass
 
@@ -313,8 +392,8 @@ def main():
         w_impact=w_impact
     )
 
-    # Analyze results
-    pareto_solutions_df = analyze_results(nsga_population, nsga_pareto)
+    # Analyze results from each algorithm separately first
+    nsga_pareto_df = analyze_results(nsga_population, nsga_pareto)
     
     # Convert MOPSO results to DataFrame
     mopso_pareto_df = pd.DataFrame(mopso_instance.get_pareto_front())
@@ -345,20 +424,26 @@ def main():
             'environmental_impact': impact_val
         })
     weighted_df = pd.DataFrame(weighted_records)
+    
+    # Create unified Pareto front combining all algorithms
+    print("\n" + "="*80)
+    print("CREATING UNIFIED PARETO FRONT")
+    print("="*80)
+    pareto_solutions_df = combine_pareto_fronts(nsga_pareto_df, mopso_pareto_df, weighted_df)
 
-    # Persist all outputs
+    # Persist all outputs (unified Pareto front + individual algorithm results)
     save_run_outputs(pareto_solutions_df, nsga_logbook, run_dir, 
                     args.config if os.path.isfile(args.config) else None, 
-                    weighted_df=weighted_df, mopso_df=mopso_pareto_df)
+                    weighted_df=weighted_df, mopso_df=mopso_pareto_df, nsga_df=nsga_pareto_df)
 
-    # Create comparisons and visualizations
-    compare_methods(pareto_solutions_df, weighted_df, os.path.join(run_dir, "methods"), mopso_df=mopso_pareto_df)
+    # Create comparisons and visualizations using the original individual results
+    compare_methods(nsga_pareto_df, weighted_df, os.path.join(run_dir, "methods"), mopso_df=mopso_pareto_df)
     
-    # Detailed comparison including MOPSO
-    comparison_metrics = compare_all_methods_detailed(pareto_solutions_df, weighted_df, mopso_pareto_df, 
+    # Detailed comparison including MOPSO (using individual algorithm results)
+    comparison_metrics = compare_all_methods_detailed(nsga_pareto_df, weighted_df, mopso_pareto_df, 
                                                      os.path.join(run_dir, "methods"))
 
-    # Continue with existing visualizations
+    # Continue with existing visualizations using the unified Pareto front
     visualize_pareto_front(pareto_solutions_df, os.path.join(run_dir, "pareto"))
     visualize_solutions_composition(pareto_solutions_df, os.path.join(run_dir, "composition"))
 
@@ -386,7 +471,7 @@ def main():
         os.path.join(run_dir, "sensitivity")
     )
     
-    # Extract representative solutions from the Pareto front for detailed analysis
+    # Extract representative solutions from the unified Pareto front for detailed analysis
     solutions = extract_representative_solutions(pareto_solutions_df)
     
     # Analyze each selected solution
@@ -401,6 +486,13 @@ def main():
     
     print("\nAnalysis complete! All visualizations and CSVs have been saved in:")
     print(run_dir)
+    print(f"\nKey outputs:")
+    print(f"  • pareto.csv: Unified Pareto front from all algorithms")
+    print(f"  • nsga2_solutions.csv: NSGA-II solutions")
+    print(f"  • mopso_solutions.csv: MOPSO solutions") 
+    print(f"  • weighted_solutions.csv: Weighted sum solutions")
+    print(f"  • methods_comparison.png: Individual algorithm comparison")
+    print(f"  • pareto_pareto2d.png & pareto_pareto3d.png: Unified Pareto front plots")
 
 
 if __name__ == "__main__":
