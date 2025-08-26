@@ -79,6 +79,92 @@ def run_mopso_with_params(bounds, evaluate_func, swarm_size=100, max_iterations=
     return pareto_solutions, mopso_instance
 
 
+def extract_representative_solutions(pareto_df):
+    """
+    Extract representative solutions from the Pareto front for detailed analysis.
+    
+    Args:
+        pareto_df: DataFrame containing Pareto optimal solutions
+        
+    Returns:
+        List of solution dictionaries with representative solutions
+    """
+    if pareto_df.empty:
+        return []
+    
+    solutions = []
+    
+    # Find lowest cost solution
+    lowest_cost_idx = pareto_df['cost'].idxmin()
+    lowest_cost = pareto_df.loc[lowest_cost_idx]
+    solutions.append({
+        "name": "Lowest Cost",
+        "solar_panels": int(lowest_cost['solar_panels']),
+        "wind_turbines": int(lowest_cost['wind_turbines']),
+        "batteries": int(lowest_cost['batteries']),
+        "cost": float(lowest_cost['cost']),
+        "reliability": float(lowest_cost['reliability']),
+        "environmental_impact": float(lowest_cost['environmental_impact'])
+    })
+    
+    # Find highest reliability solution
+    highest_reliability_idx = pareto_df['reliability'].idxmax()
+    highest_reliability = pareto_df.loc[highest_reliability_idx]
+    solutions.append({
+        "name": "Highest Reliability",
+        "solar_panels": int(highest_reliability['solar_panels']),
+        "wind_turbines": int(highest_reliability['wind_turbines']),
+        "batteries": int(highest_reliability['batteries']),
+        "cost": float(highest_reliability['cost']),
+        "reliability": float(highest_reliability['reliability']),
+        "environmental_impact": float(highest_reliability['environmental_impact'])
+    })
+    
+    # Find lowest environmental impact solution
+    lowest_emissions_idx = pareto_df['environmental_impact'].idxmin()
+    lowest_emissions = pareto_df.loc[lowest_emissions_idx]
+    solutions.append({
+        "name": "Lowest Emissions",
+        "solar_panels": int(lowest_emissions['solar_panels']),
+        "wind_turbines": int(lowest_emissions['wind_turbines']),
+        "batteries": int(lowest_emissions['batteries']),
+        "cost": float(lowest_emissions['cost']),
+        "reliability": float(lowest_emissions['reliability']),
+        "environmental_impact": float(lowest_emissions['environmental_impact'])
+    })
+    
+    # Find balanced solution (closest to ideal point using normalized distances)
+    # Normalize objectives (cost and env_impact: minimize, reliability: maximize)
+    cost_norm = (pareto_df['cost'] - pareto_df['cost'].min()) / (pareto_df['cost'].max() - pareto_df['cost'].min() + 1e-10)
+    reliability_norm = 1 - (pareto_df['reliability'] - pareto_df['reliability'].min()) / (pareto_df['reliability'].max() - pareto_df['reliability'].min() + 1e-10)
+    impact_norm = (pareto_df['environmental_impact'] - pareto_df['environmental_impact'].min()) / (pareto_df['environmental_impact'].max() - pareto_df['environmental_impact'].min() + 1e-10)
+    
+    # Calculate distance to ideal point (0,0,0)
+    distances = np.sqrt(cost_norm**2 + reliability_norm**2 + impact_norm**2)
+    balanced_idx = distances.idxmin()
+    balanced = pareto_df.loc[balanced_idx]
+    solutions.append({
+        "name": "Balanced",
+        "solar_panels": int(balanced['solar_panels']),
+        "wind_turbines": int(balanced['wind_turbines']),
+        "batteries": int(balanced['batteries']),
+        "cost": float(balanced['cost']),
+        "reliability": float(balanced['reliability']),
+        "environmental_impact": float(balanced['environmental_impact'])
+    })
+    
+    # Remove duplicates (if any solution appears multiple times)
+    unique_solutions = []
+    seen_configs = set()
+    for sol in solutions:
+        config_key = (sol['solar_panels'], sol['wind_turbines'], sol['batteries'])
+        if config_key not in seen_configs:
+            seen_configs.add(config_key)
+            unique_solutions.append(sol)
+    
+    return unique_solutions
+
+
 def save_run_outputs(pareto_df, logbook, out_dir: str, config_path: str = None, 
                     weighted_df: pd.DataFrame = None, mopso_df: pd.DataFrame = None):
     """Save structured outputs for an experiment run."""
@@ -300,13 +386,8 @@ def main():
         os.path.join(run_dir, "sensitivity")
     )
     
-    # Define the selected solutions from Pareto front for detailed analysis
-    solutions = [
-        {"name": "Lowest Cost", "solar_panels": 83, "wind_turbines": 5, "batteries": 3, "cost": 91620},
-        {"name": "Highest Reliability (Cost-Effective)", "solar_panels": 125, "wind_turbines": 5, "batteries": 3, "cost": 109260},
-        {"name": "Lowest Emissions", "solar_panels": 29, "wind_turbines": 17, "batteries": 0, "cost": 175380},
-        {"name": "Balanced", "solar_panels": 138, "wind_turbines": 6, "batteries": 2, "cost": 121400}
-    ]
+    # Extract representative solutions from the Pareto front for detailed analysis
+    solutions = extract_representative_solutions(pareto_solutions_df)
     
     # Analyze each selected solution
     analysis_results = []
