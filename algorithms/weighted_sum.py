@@ -8,6 +8,7 @@ multi-objective renewable energy system optimization.
 import numpy as np
 import random
 from deap import base, creator, tools, algorithms
+import pandas as pd
 
 
 # Normalization bounds (estimate from problem domain)
@@ -146,3 +147,80 @@ def run_weighted_sum_ga(bounds, base_evaluate_func, pop_size=100, num_generation
     )
     
     return population, logbook, hof
+
+
+def run_weighted_sum_sweep(bounds, base_evaluate_func, weights_list,
+                           pop_size=100, num_generations=50, cxpb=0.7, mutpb=0.2):
+    """
+    Run the weighted-sum GA over multiple weight vectors and aggregate the best
+    solution from each run into a pseudo-Pareto set.
+
+    Args:
+        bounds: List of (min, max) tuples for each decision variable
+        base_evaluate_func: Base multi-objective evaluation function
+        weights_list: Iterable of weight triplets [w_cost, w_reliability, w_impact]
+        pop_size: Population size
+        num_generations: Number of generations
+        cxpb: Crossover probability
+        mutpb: Mutation probability
+
+    Returns:
+        Pandas DataFrame with columns:
+        ['id','solar_panels','wind_turbines','batteries',
+         'cost','reliability','environmental_impact',
+         'w_cost','w_reliability','w_impact']
+    """
+
+    aggregated_records = []
+
+    for idx, weights in enumerate(weights_list):
+        try:
+            w_cost, w_reliability, w_impact = [float(x) for x in weights]
+        except Exception:
+            # Skip invalid weight vector
+            continue
+
+        population, logbook, hof = run_weighted_sum_ga(
+            bounds=bounds,
+            base_evaluate_func=base_evaluate_func,
+            pop_size=pop_size,
+            num_generations=num_generations,
+            cxpb=cxpb,
+            mutpb=mutpb,
+            w_cost=w_cost,
+            w_reliability=w_reliability,
+            w_impact=w_impact
+        )
+
+        if len(hof) == 0:
+            continue
+
+        best = hof[0]
+        # Retrieve cached true objectives if available; otherwise compute via base evaluate
+        cost_cached = getattr(best, "_true_cost", None)
+        reli_cached = getattr(best, "_true_reliability", None)
+        impact_cached = getattr(best, "_true_impact", None)
+
+        if cost_cached is None or reli_cached is None or impact_cached is None:
+            result = base_evaluate_func(best)
+            if result[0] == float('inf'):
+                # Infeasible; skip
+                continue
+            cost_val, reli_val, impact_val = result
+        else:
+            cost_val, reli_val, impact_val = cost_cached, reli_cached, impact_cached
+
+        aggregated_records.append({
+            'id': idx,
+            'solar_panels': int(best[0]),
+            'wind_turbines': int(best[1]),
+            'batteries': int(best[2]),
+            'cost': float(cost_val),
+            'reliability': float(reli_val),
+            'environmental_impact': float(impact_val),
+            'w_cost': w_cost,
+            'w_reliability': w_reliability,
+            'w_impact': w_impact
+        })
+
+    return pd.DataFrame(aggregated_records)
