@@ -18,7 +18,7 @@ import datetime
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-from algorithms import run_nsga2, run_mopso_optimization, run_weighted_sum_ga
+from algorithms import run_nsga2, run_mopso_optimization, run_weighted_sum_ga, run_weighted_sum_sweep
 from energy_system import calculate_total_cost, calculate_reliability, calculate_environmental_impact
 from energy_system.parameters import BOUNDS
 from data_generation import load_data_from_config
@@ -104,6 +104,7 @@ def single_run_all_algorithms(config_path: str = None, seed: int = None) -> Tupl
     w_cxpb = float(weighted_cfg.get("cxpb", cxpb))
     w_mutpb = float(weighted_cfg.get("mutpb", mutpb))
     weights_cfg = weighted_cfg.get("weights", [0.6, 0.3, 0.1])
+    weights_list = weighted_cfg.get("weights_list", None)
     try:
         w_cost, w_reliability, w_impact = [float(x) for x in weights_cfg]
     except Exception:
@@ -146,46 +147,57 @@ def single_run_all_algorithms(config_path: str = None, seed: int = None) -> Tupl
         social_coeff=mopso_social_coeff
     )
     
-    # Run Weighted Sum
-    weighted_population, weighted_logbook, weighted_hof = run_weighted_sum_ga(
-        bounds=BOUNDS,
-        base_evaluate_func=evaluate_func,
-        pop_size=w_pop_size,
-        num_generations=w_num_generations,
-        cxpb=w_cxpb,
-        mutpb=w_mutpb,
-        w_cost=w_cost,
-        w_reliability=w_reliability,
-        w_impact=w_impact
-    )
+    # Run Weighted Sum (sweep over weights_list if provided, otherwise single baseline)
+    if weights_list and isinstance(weights_list, (list, tuple)) and len(weights_list) > 0:
+        weighted_df = run_weighted_sum_sweep(
+            bounds=BOUNDS,
+            base_evaluate_func=evaluate_func,
+            weights_list=weights_list,
+            pop_size=w_pop_size,
+            num_generations=w_num_generations,
+            cxpb=w_cxpb,
+            mutpb=w_mutpb
+        )
+    else:
+        weighted_population, weighted_logbook, weighted_hof = run_weighted_sum_ga(
+            bounds=BOUNDS,
+            base_evaluate_func=evaluate_func,
+            pop_size=w_pop_size,
+            num_generations=w_num_generations,
+            cxpb=w_cxpb,
+            mutpb=w_mutpb,
+            w_cost=w_cost,
+            w_reliability=w_reliability,
+            w_impact=w_impact
+        )
+
+        # Convert Weighted Sum results
+        weighted_records = []
+        for i, ind in enumerate(weighted_hof):
+            cost_cached = getattr(ind, "_true_cost", None)
+            reli_cached = getattr(ind, "_true_reliability", None)
+            impact_cached = getattr(ind, "_true_impact", None)
+            cost_val = cost_cached if cost_cached is not None else calculate_total_cost(ind)
+            reli_val = reli_cached if reli_cached is not None else calculate_reliability(
+                ind, daily_solar_irradiance, daily_wind_speed, daily_energy_demand)
+            impact_val = impact_cached if impact_cached is not None else calculate_environmental_impact(
+                ind, daily_solar_irradiance, daily_wind_speed)
+            weighted_records.append({
+                'id': i,
+                'solar_panels': ind[0],
+                'wind_turbines': ind[1],
+                'batteries': ind[2],
+                'cost': cost_val,
+                'reliability': reli_val,
+                'environmental_impact': impact_val
+            })
+        weighted_df = pd.DataFrame(weighted_records)
     
     # Convert results to DataFrames
     nsga_df = analyze_results(nsga_population, nsga_pareto)
     
     # Convert MOPSO results
     mopso_df = pd.DataFrame(mopso_instance.get_pareto_front())
-    
-    # Convert Weighted Sum results
-    weighted_records = []
-    for i, ind in enumerate(weighted_hof):
-        cost_cached = getattr(ind, "_true_cost", None)
-        reli_cached = getattr(ind, "_true_reliability", None)
-        impact_cached = getattr(ind, "_true_impact", None)
-        cost_val = cost_cached if cost_cached is not None else calculate_total_cost(ind)
-        reli_val = reli_cached if reli_cached is not None else calculate_reliability(
-            ind, daily_solar_irradiance, daily_wind_speed, daily_energy_demand)
-        impact_val = impact_cached if impact_cached is not None else calculate_environmental_impact(
-            ind, daily_solar_irradiance, daily_wind_speed)
-        weighted_records.append({
-            'id': i,
-            'solar_panels': ind[0],
-            'wind_turbines': ind[1],
-            'batteries': ind[2],
-            'cost': cost_val,
-            'reliability': reli_val,
-            'environmental_impact': impact_val
-        })
-    weighted_df = pd.DataFrame(weighted_records)
     
     return nsga_df, mopso_df, weighted_df
 
