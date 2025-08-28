@@ -15,6 +15,7 @@ import os
 from typing import List, Dict, Tuple, Optional
 import warnings
 warnings.filterwarnings('ignore')
+from energy_system.parameters import MAX_BUDGET
 
 # Set style for better plots
 plt.style.use('seaborn-v0_8')
@@ -33,6 +34,31 @@ class AlgorithmComparison:
         """
         self.reference_point = reference_point
         self.results = {}
+        # Store per-run metrics for proper distribution plots
+        self.per_run_metrics: List[Dict] = []
+        # Default to a fixed, problem-aware reference point if none provided
+        if self.reference_point is None:
+            try:
+                self.reference_point = self.get_evo_grid_reference_point()
+            except Exception:
+                # Fallback: will be set adaptively inside calculate_hypervolume
+                self.reference_point = None
+
+    def get_evo_grid_reference_point(self) -> np.ndarray:
+        """
+        Define a fixed reference point for hypervolume based on EvoGrid constraints.
+        Uses budget cap and a conservative minimum reliability, and a generous
+        upper bound for environmental impact to ensure all solutions are below it.
+        """
+        # Cost: use MAX_BUDGET + 10%
+        max_cost = float(MAX_BUDGET) * 1.1
+        # Reliability: for minimization we negate reliability inside HV.
+        # Provide a small positive margin above the worst (negated) value by using low reliability.
+        min_reliability = 0.7  # domain-informed conservative lower bound
+        # Environmental impact: generous bound (domain specific constant)
+        # If you later compute a tighter bound, replace this constant accordingly.
+        max_impact = 74250.0
+        return np.array([max_cost, -min_reliability, max_impact])
         
     def calculate_hypervolume(self, solutions: np.ndarray) -> float:
         """
@@ -52,12 +78,12 @@ class AlgorithmComparison:
         min_solutions = solutions.copy()
         min_solutions[:, 1] = -min_solutions[:, 1]
         
-        # Use reference point or calculate adaptive reference point
+        # Use fixed reference point if available, otherwise fall back to adaptive reference
         if self.reference_point is None:
             ref_point = np.array([
-                np.max(min_solutions[:, 0]) * 1.1,  # Worst cost + 10%
-                np.max(min_solutions[:, 1]) * 1.1,  # Worst reliability (negated) + 10%
-                np.max(min_solutions[:, 2]) * 1.1   # Worst env_impact + 10%
+                np.max(min_solutions[:, 0]) * 1.1,
+                np.max(min_solutions[:, 1]) * 1.1,
+                np.max(min_solutions[:, 2]) * 1.1
             ])
         else:
             ref_point = self.reference_point.copy()
@@ -221,8 +247,8 @@ class AlgorithmComparison:
             ])
         
         # Use combined front as reference if not provided
-        if reference_front is None:
-            reference_front = np.vstack([nsga_vals, mopso_vals, weighted_vals])
+        # if reference_front is None:
+        #     reference_front = np.vstack([nsga_vals, mopso_vals, weighted_vals])
         
         # Normalize all solutions for fair comparison
         all_solutions = np.vstack([nsga_vals, mopso_vals, weighted_vals])
@@ -232,7 +258,7 @@ class AlgorithmComparison:
         nsga_norm = self.normalize_objectives(nsga_vals, ref_min, ref_max)
         mopso_norm = self.normalize_objectives(mopso_vals, ref_min, ref_max)
         weighted_norm = self.normalize_objectives(weighted_vals, ref_min, ref_max)
-        reference_norm = self.normalize_objectives(reference_front, ref_min, ref_max)
+        # reference_norm = self.normalize_objectives(reference_front, ref_min, ref_max)
         
         # Calculate metrics
         metrics = {}
@@ -245,11 +271,11 @@ class AlgorithmComparison:
         }
         
         # IGD (using normalized values)
-        metrics['igd'] = {
-            'NSGA-II': self.calculate_igd(nsga_norm, reference_norm),
-            'MOPSO': self.calculate_igd(mopso_norm, reference_norm),
-            'Weighted Sum': self.calculate_igd(weighted_norm, reference_norm)
-        }
+        # metrics['igd'] = {
+        #     'NSGA-II': self.calculate_igd(nsga_norm, reference_norm),
+        #     'MOPSO': self.calculate_igd(mopso_norm, reference_norm),
+        #     'Weighted Sum': self.calculate_igd(weighted_norm, reference_norm)
+        # }
         
         # Spacing
         metrics['spacing'] = {
@@ -272,6 +298,8 @@ class AlgorithmComparison:
             'Weighted Sum': len(weighted_df)
         }
         
+        # Persist this run's metrics for distribution plots
+        self.per_run_metrics.append(metrics)
         return metrics
     
     def compile_multi_run_results(self, multi_run_metrics: List[Dict]) -> pd.DataFrame:
@@ -285,7 +313,7 @@ class AlgorithmComparison:
             DataFrame with statistical summary
         """
         algorithms = ['NSGA-II', 'MOPSO', 'Weighted Sum']
-        metrics = ['hypervolume', 'igd', 'spacing', 'spread', 'n_solutions']
+        metrics = ['hypervolume', 'spacing', 'spread', 'n_solutions']
         
         results = []
         
@@ -321,7 +349,7 @@ class AlgorithmComparison:
             Dictionary with statistical test results
         """
         algorithms = ['NSGA-II', 'MOPSO', 'Weighted Sum']
-        metrics = ['hypervolume', 'igd', 'spacing', 'spread']
+        metrics = ['hypervolume', 'spacing', 'spread']
         
         test_results = {}
         
@@ -383,7 +411,6 @@ class AlgorithmComparison:
         
         # 1. Bar plots with error bars for each metric
         metrics = results_df['Metric'].unique()
-        n_metrics = len(metrics)
         
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         axes = axes.flatten()
@@ -423,38 +450,56 @@ class AlgorithmComparison:
                        dpi=300, bbox_inches='tight')
         plt.show()
         
-        # 2. Box plots for distribution comparison
-        fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-        axes = axes.flatten()
-        
-        for i, metric in enumerate(metrics):
-            ax = axes[i]
-            metric_data = results_df[results_df['Metric'] == metric]
+        # 2. Box plots for distribution comparison over runs using per-run metrics
+        if self.per_run_metrics:
+            # Build arrays per algorithm/metric from stored per-run metrics
+            algorithms = ['NSGA-II', 'MOPSO', 'Weighted Sum']
+            dist_metrics = ['hypervolume', 'spacing', 'spread']
+            num_plots = len(dist_metrics)
+            fig, axes = plt.subplots(1, num_plots, figsize=(6 * num_plots, 6))
+            if num_plots == 1:
+                axes = [axes]
+            colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
             
-            # Create box plot data (we need the original values, not just summary stats)
-            # For now, we'll create a simplified version using the available statistics
-            algorithms = metric_data['Algorithm'].values
-            means = metric_data['Mean'].values
+            # Prepare data
+            per_metric_values = {m: {a: [] for a in algorithms} for m in dist_metrics}
+            for run in self.per_run_metrics:
+                for m in dist_metrics:
+                    if m in run:
+                        for a in algorithms:
+                            if a in run[m]:
+                                per_metric_values[m][a].append(run[m][a])
             
-            # Create a simple bar plot since we don't have raw distributions
-            bars = ax.bar(algorithms, means, color=colors[:len(algorithms)], alpha=0.7)
+            # Map titles and y-labels
+            titles = {
+                'hypervolume': 'Hypervolume Distribution Across Runs',
+                'spacing': 'Spacing Distribution Across Runs',
+                'spread': 'Spread Distribution Across Runs'
+            }
+            ylabels = {
+                'hypervolume': 'Hypervolume (higher = better)',
+                'spacing': 'Spacing (lower = more uniform)',
+                'spread': 'Spread (higher = better)'
+            }
             
-            ax.set_title(f'{metric.replace("_", " ").title()} Distribution', fontsize=14, fontweight='bold')
-            ax.set_ylabel('Value')
-            ax.grid(True, alpha=0.3)
-            ax.tick_params(axis='x', rotation=45)
+            for idx, metric_name in enumerate(dist_metrics):
+                ax = axes[idx]
+                data = [per_metric_values[metric_name][a] for a in algorithms]
+                box = ax.boxplot(data, labels=algorithms, patch_artist=True, showmeans=True, meanline=True)
+                for patch, color in zip(box['boxes'], colors):
+                    patch.set_facecolor(color)
+                    patch.set_alpha(0.7)
+                ax.set_title(titles[metric_name], fontsize=14, fontweight='bold')
+                ax.set_ylabel(ylabels[metric_name])
+                ax.grid(True, alpha=0.3)
+                ax.tick_params(axis='x', rotation=45)
+            
+            plt.tight_layout()
+            if save_dir:
+                plt.savefig(os.path.join(save_dir, 'distribution_comparison.png'), 
+                           dpi=300, bbox_inches='tight')
+            plt.show()
         
-        # Hide unused subplots
-        for j in range(i+1, len(axes)):
-            axes[j].set_visible(False)
-        
-        plt.tight_layout()
-        if save_dir:
-            plt.savefig(os.path.join(save_dir, 'distribution_comparison.png'), 
-                       dpi=300, bbox_inches='tight')
-        plt.show()
-        
-        # Note: Radar chart removed due to compatibility issues
     
     def _create_radar_chart(self, results_df: pd.DataFrame, save_dir: str = None):
         """Create radar chart for overall algorithm comparison - DISABLED."""
