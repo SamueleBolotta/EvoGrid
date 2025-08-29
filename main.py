@@ -18,7 +18,7 @@ from energy_system import (
     calculate_total_cost, calculate_reliability, calculate_environmental_impact,
     check_constraints
 )
-from energy_system.parameters import BOUNDS
+from energy_system.parameters import *
 from data_generation import load_data_from_config
 from analysis import analyze_results, perform_sensitivity_analysis, analyze_solution_detail
 from visualization import (
@@ -78,7 +78,7 @@ def run_mopso_with_params(bounds, evaluate_func, swarm_size=100, max_iterations=
     return pareto_solutions, mopso_instance
 
 
-def combine_pareto_fronts(*solution_dfs):
+def combine_pareto_fronts(*solution_dfs, run_dir=None):
     """
     Combine solutions from multiple algorithms and apply Pareto dominance filtering.
     
@@ -91,6 +91,9 @@ def combine_pareto_fronts(*solution_dfs):
     """
     if not solution_dfs:
         return pd.DataFrame()
+    
+    if run_dir and not os.path.isdir(run_dir):
+        os.makedirs(run_dir, exist_ok=True)
     
     # Combine all solutions
     all_solutions = []
@@ -135,17 +138,19 @@ def combine_pareto_fronts(*solution_dfs):
     unified_pareto.reset_index(drop=True, inplace=True)
     unified_pareto['id'] = range(len(unified_pareto))
     
-    print(f"\nUnified Pareto Front Statistics:")
-    print(f"Total solutions considered: {len(combined_df)}")
-    print(f"Pareto optimal solutions: {len(unified_pareto)}")
+    # Write unified Pareto front to txt file
+    with open(os.path.join(run_dir, "combined_pareto_front.txt"), "w") as f:
+        f.write(f"Unified Pareto Front Statistics:\n")
+        f.write(f"Total solutions considered: {len(combined_df)}\n")
+        f.write(f"Pareto optimal solutions: {len(unified_pareto)}\n")
     
-    # Show contribution by algorithm
-    if 'source_algorithm' in unified_pareto.columns:
-        contribution = unified_pareto['source_algorithm'].value_counts()
-        print(f"Contribution by algorithm:")
-        for algo, count in contribution.items():
-            percentage = (count / len(unified_pareto)) * 100
-            print(f"  • {algo}: {count} solutions ({percentage:.1f}%)")
+        # Show contribution by algorithm
+        if 'source_algorithm' in unified_pareto.columns:
+            contribution = unified_pareto['source_algorithm'].value_counts()
+            f.write(f"Contribution by algorithm:\n")
+            for algo, count in contribution.items():
+                percentage = (count / len(unified_pareto)) * 100
+                f.write(f"  • {algo}: {count} solutions ({percentage:.1f}%)\n")
     
     return unified_pareto
 
@@ -445,7 +450,19 @@ def main():
     print("\n" + "="*80)
     print("CREATING UNIFIED PARETO FRONT")
     print("="*80)
-    pareto_solutions_df = combine_pareto_fronts(nsga_pareto_df, mopso_pareto_df, weighted_df)
+    pareto_solutions_df = combine_pareto_fronts(nsga_pareto_df, mopso_pareto_df, weighted_df, run_dir=run_dir)
+    combined_pareto_solutions_extracted = extract_representative_solutions(pareto_solutions_df)
+
+    # Analyze representative solutions from the unified Pareto front (mix of algorithms)
+    mix_analysis_results = []
+    for solution in combined_pareto_solutions_extracted:
+        result = analyze_solution_detail(
+            solution,
+            (daily_solar_irradiance, daily_wind_speed, daily_energy_demand),
+            algo="mix",
+            save_dir=os.path.join(run_dir, "mix_details")
+        )
+        mix_analysis_results.append(result)
 
     # Persist all outputs (unified Pareto front + individual algorithm results)
     save_run_outputs(pareto_solutions_df, nsga_logbook, run_dir, 
@@ -480,25 +497,59 @@ def main():
         "reliability": float(best_tradeoff_sol["reliability"]),
         "environmental_impact": float(best_tradeoff_sol["environmental_impact"]),
     }
-    sensitivity_results = perform_sensitivity_analysis(
-        best_tradeoff_payload, 
-        evaluate_func,
-        (daily_solar_irradiance, daily_wind_speed, daily_energy_demand),
-        os.path.join(run_dir, "sensitivity")
-    )
+    # sensitivity_results = perform_sensitivity_analysis(
+    #     best_tradeoff_payload, 
+    #     evaluate_func,
+    #     (daily_solar_irradiance, daily_wind_speed, daily_energy_demand),
+    #     os.path.join(run_dir, "sensitivity")
+    # )
     
     # Extract representative solutions from the unified Pareto front for detailed analysis
-    solutions = extract_representative_solutions(pareto_solutions_df)
+    nsga2_solutions = extract_representative_solutions(pareto_solutions_df)
     
     # Analyze each selected solution
-    analysis_results = []
-    for solution in solutions:
+    print("\n" + "="*80)
+    print("ANALYZING NSGA-II SOLUTIONS")
+    print("="*80)
+    nsga2_analysis_results = []
+    for solution in nsga2_solutions:
         result = analyze_solution_detail(
             solution, 
             (daily_solar_irradiance, daily_wind_speed, daily_energy_demand),
-            save_dir=os.path.join(run_dir, "details")
+            algo="nsga2",
+            save_dir=os.path.join(run_dir, "nsga2_details")
         )
-        analysis_results.append(result)
+        nsga2_analysis_results.append(result)
+    
+    # Analyze MOPSO solutions
+    print("\n" + "="*80)
+    print("ANALYZING MOPSO SOLUTIONS")
+    print("="*80)
+    mopso_solutions = extract_representative_solutions(mopso_pareto_df)
+    mopso_analysis_results = []
+    for solution in mopso_solutions:
+        result = analyze_solution_detail(
+            solution, 
+            (daily_solar_irradiance, daily_wind_speed, daily_energy_demand),
+            algo="mopso",
+            save_dir=os.path.join(run_dir, "mopso_details")
+        )
+        mopso_analysis_results.append(result)
+
+    # Analyze weighted sum solutions
+    print("\n" + "="*80)
+    print("ANALYZING WEIGHTED SUM SOLUTIONS")
+    print("="*80)
+    weighted_solutions = extract_representative_solutions(weighted_df)
+    weighted_analysis_results = []
+    for solution in weighted_solutions:
+        result = analyze_solution_detail(
+            solution, 
+            (daily_solar_irradiance, daily_wind_speed, daily_energy_demand),
+            algo="weighted",
+            save_dir=os.path.join(run_dir, "weighted_details")
+        )
+        weighted_analysis_results.append(result)
     
     print("\nAnalysis complete! All visualizations and CSVs have been saved in:")
     print(run_dir)

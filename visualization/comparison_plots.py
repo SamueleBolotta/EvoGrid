@@ -179,36 +179,38 @@ def compare_all_methods_detailed(nsga_df, weighted_df, mopso_df, save_path=None)
     plt.tight_layout()
     if save_path:
         plt.savefig(f"{save_path}_detailed_comparison.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    # plt.show()
     
-    # Print summary statistics
-    print("\n" + "="*80)
-    print("OPTIMIZATION METHODS COMPARISON SUMMARY")
-    print("="*80)
+    # Save summary statistics to txt file
+    with open(f"{save_path}_detailed_comparison.txt", "w") as f:
+        f.write("OPTIMIZATION METHODS COMPARISON SUMMARY\n")
+        f.write("="*80 + "\n")
+        
+        f.write("\nNSGA-II:\n")
     
-    print(f"\nNSGA-II:")
-    print(f"  • Solutions found: {len(nsga_df)}")
-    print(f"  • Cost range: ${nsga_vals[:,0].min():.0f} - ${nsga_vals[:,0].max():.0f}")
-    print(f"  • Reliability range: {nsga_vals[:,1].min():.3f} - {nsga_vals[:,1].max():.3f}")
-    print(f"  • Env. impact range: {nsga_vals[:,2].min():.6f} - {nsga_vals[:,2].max():.6f}")
-    print(f"  • Hypervolume: {hv_nsga:.2e}")
-    print(f"  • Spacing (diversity): {spacing_nsga:.3f}")
-    
-    print(f"\nMOPSO:")
-    print(f"  • Solutions found: {len(mopso_df)}")
-    print(f"  • Cost range: ${mopso_vals[:,0].min():.0f} - ${mopso_vals[:,0].max():.0f}")
-    print(f"  • Reliability range: {mopso_vals[:,1].min():.3f} - {mopso_vals[:,1].max():.3f}")
-    print(f"  • Env. impact range: {mopso_vals[:,2].min():.6f} - {mopso_vals[:,2].max():.6f}")
-    print(f"  • Hypervolume: {hv_mopso:.2e}")
-    print(f"  • Spacing (diversity): {spacing_mopso:.3f}")
-    
-    print(f"\nWeighted Sum:")
-    print(f"  • Solutions found: {len(weighted_df)}")
-    print(f"  • Cost range: ${weighted_vals[:,0].min():.0f} - ${weighted_vals[:,0].max():.0f}")
-    print(f"  • Reliability range: {weighted_vals[:,1].min():.3f} - {weighted_vals[:,1].max():.3f}")
-    print(f"  • Env. impact range: {weighted_vals[:,2].min():.6f} - {weighted_vals[:,2].max():.6f}")
-    print(f"  • Hypervolume: {hv_weighted:.2e}")
-    print(f"  • Spacing (diversity): {spacing_weighted:.3f}")
+        f.write(f"  • Solutions found: {len(nsga_df)}\n")
+        f.write(f"  • Cost range: ${nsga_vals[:,0].min():.0f} - ${nsga_vals[:,0].max():.0f}\n")
+        f.write(f"  • Reliability range: {nsga_vals[:,1].min():.3f} - {nsga_vals[:,1].max():.3f}\n")
+        f.write(f"  • Env. impact range: {nsga_vals[:,2].min():.6f} - {nsga_vals[:,2].max():.6f}\n")
+        f.write(f"  • Hypervolume: {hv_nsga:.2e}\n")
+        f.write(f"  • Spacing (diversity): {spacing_nsga:.3f}\n")
+        
+        f.write("\nMOPSO:\n")
+        f.write(f"  • Solutions found: {len(mopso_df)}\n")
+        f.write(f"  • Cost range: ${mopso_vals[:,0].min():.0f} - ${mopso_vals[:,0].max():.0f}\n")
+        f.write(f"  • Reliability range: {mopso_vals[:,1].min():.3f} - {mopso_vals[:,1].max():.3f}\n")
+        f.write(f"  • Env. impact range: {mopso_vals[:,2].min():.6f} - {mopso_vals[:,2].max():.6f}\n")
+        f.write(f"  • Hypervolume: {hv_mopso:.2e}\n")
+        f.write(f"  • Spacing (diversity): {spacing_mopso:.3f}\n")
+        
+        f.write("\nWeighted Sum:\n")
+        f.write(f"  • Solutions found: {len(weighted_df)}\n")
+        f.write(f"  • Cost range: ${weighted_vals[:,0].min():.0f} - ${weighted_vals[:,0].max():.0f}\n")
+        f.write(f"  • Reliability range: {weighted_vals[:,1].min():.3f} - {weighted_vals[:,1].max():.3f}\n")
+        f.write(f"  • Env. impact range: {weighted_vals[:,2].min():.6f} - {weighted_vals[:,2].max():.6f}\n")
+        f.write(f"  • Hypervolume: {hv_weighted:.2e}\n")
+        f.write(f"  • Spacing (diversity): {spacing_weighted:.3f}\n")
+
     
     return {
         'hypervolumes': {'NSGA-II': hv_nsga, 'MOPSO': hv_mopso, 'Weighted Sum': hv_weighted},

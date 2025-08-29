@@ -15,7 +15,7 @@ from energy_system.objective_functions import calculate_total_cost, calculate_re
 from energy_system.parameters import BATTERY_CAPACITY
 
 
-def analyze_solution_detail(solution, daily_data, save_dir=None):
+def analyze_solution_detail(solution, daily_data, algo, save_dir=None):
     """
     Perform detailed analysis of a single solution.
     
@@ -59,26 +59,29 @@ def analyze_solution_detail(solution, daily_data, save_dir=None):
     days_with_deficit = sum(1 for deficit in sim_results['energy_deficit'] if deficit > 0)
     max_deficit_day = np.argmax(sim_results['energy_deficit'])
     
-    # Print summary
-    print(f"\n{'='*80}")
-    print(f"DETAILED ANALYSIS FOR: {name}")
-    print(f"{'='*80}")
-    print(f"Configuration: {num_solar_panels} Solar Panels, {num_wind_turbines} Wind Turbines, {num_batteries} Batteries")
-    print(f"Cost: ${cost:.2f}")
-    print(f"Reliability: {reliability:.4f} ({100*reliability:.2f}%)")
-    print(f"Environmental Impact: {env_impact:.6f} kg CO2/kWh")
-    print(f"\nSummary Statistics:")
-    print(f"  • Total Annual Energy Demand: {total_demand:.2f} kWh")
-    print(f"  • Solar Energy Production: {total_solar:.2f} kWh ({100*total_solar/total_demand:.2f}% of demand)")
-    print(f"  • Wind Energy Production: {total_wind:.2f} kWh ({100*total_wind/total_demand:.2f}% of demand)")
-    print(f"  • Total Energy Deficit: {total_deficit:.2f} kWh ({100*total_deficit/total_demand:.2f}% of demand)")
-    print(f"  • Curtailed Energy: {total_curtailed:.2f} kWh ({100*total_curtailed/(total_solar+total_wind):.2f}% of production)")
-    print(f"  • Days with Energy Deficit: {days_with_deficit} days ({100*days_with_deficit/365:.2f}% of year)")
-    if days_with_deficit > 0:
-        print(f"  • Worst Day: Day {max_deficit_day} with {sim_results['energy_deficit'][max_deficit_day]:.2f} kWh deficit")
-    print(f"  • Battery Capacity: {num_batteries * BATTERY_CAPACITY:.2f} kWh")
-    print(f"  • Average Battery State: {sim_results['battery_state'].mean():.2f} kWh " + 
-          f"({100*sim_results['battery_state'].mean()/(num_batteries * BATTERY_CAPACITY + 1e-10):.2f}% of capacity)")
+    # Save analysis summary to txt file
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+    with open(os.path.join(save_dir, f"{name.lower().replace(' ', '_')}_analysis.txt"), "w") as f:
+        f.write(f"{'='*80}\n")
+        f.write(f"DETAILED ANALYSIS FOR: {name} ({algo})\n")
+        f.write(f"{'='*80}\n")
+        f.write(f"Configuration: {num_solar_panels} Solar Panels, {num_wind_turbines} Wind Turbines, {num_batteries} Batteries\n")
+        f.write(f"Cost: ${cost:.2f}\n")
+        f.write(f"Reliability: {reliability:.4f} ({100*reliability:.2f}%)\n")
+        f.write(f"Environmental Impact: {env_impact:.6f} kg CO2/kWh\n")
+        f.write(f"\nSummary Statistics:\n")
+        f.write(f"  • Total Annual Energy Demand: {total_demand:.2f} kWh\n")
+        f.write(f"  • Solar Energy Production: {total_solar:.2f} kWh ({100*total_solar/total_demand:.2f}% of demand)\n")
+        f.write(f"  • Wind Energy Production: {total_wind:.2f} kWh ({100*total_wind/total_demand:.2f}% of demand)\n")
+        f.write(f"  • Total Energy Deficit: {total_deficit:.2f} kWh ({100*total_deficit/total_demand:.2f}% of demand)\n")
+        f.write(f"  • Curtailed Energy: {total_curtailed:.2f} kWh ({100*total_curtailed/(total_solar+total_wind):.2f}% of production)\n")
+        f.write(f"  • Days with Energy Deficit: {days_with_deficit} days ({100*days_with_deficit/365:.2f}% of year)\n")
+        if days_with_deficit > 0:
+            f.write(f"  • Worst Day: Day {max_deficit_day} with {sim_results['energy_deficit'][max_deficit_day]:.2f} kWh deficit\n")
+        f.write(f"  • Battery Capacity: {num_batteries * BATTERY_CAPACITY:.2f} kWh\n")
+        f.write(f"  • Average Battery State: {sim_results['battery_state'].mean():.2f} kWh " + 
+                f"({100*sim_results['battery_state'].mean()/(num_batteries * BATTERY_CAPACITY + 1e-10):.2f}% of capacity)\n")
     
     # Create figure with multiple subplots
     fig = plt.figure(figsize=(15, 12))
@@ -181,7 +184,7 @@ def analyze_solution_detail(solution, daily_data, save_dir=None):
     else:
         out_path = filename
     plt.savefig(out_path, dpi=300, bbox_inches='tight')
-    plt.show()
+    # plt.show()
 
     return {"name": name, "cost": cost, "reliability": reliability, "env_impact": env_impact, 
             "solar_energy": total_solar, "wind_energy": total_wind, "deficit": total_deficit, 
