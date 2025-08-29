@@ -12,13 +12,16 @@ import pandas as pd
 
 
 # Normalization bounds (estimate from problem domain)
-COST_MIN, COST_MAX = 0, 500000
-RELIABILITY_MIN, RELIABILITY_MAX = 0.0, 1.0  
-IMPACT_MIN, IMPACT_MAX = 0.0, 1.0
+COST_MIN, COST_MAX = 0, 550000
+RELIABILITY_MIN, RELIABILITY_MAX = 0.0, 1.0
+IMPACT_MIN, IMPACT_MAX = 0.0, 0.05
 
 
 def normalize(value, vmin, vmax):
     """Normalize value to [0,1] range."""
+
+    # if vmax == 0.05:
+    #     print(f"Normalizing {value} from {vmin} to {vmax}")
     if vmax - vmin == 0:
         return 0.0
     return (value - vmin) / (vmax - vmin)
@@ -134,7 +137,7 @@ def run_weighted_sum_ga(bounds, base_evaluate_func, pop_size=100, num_generation
     # Hall of fame for best solutions
     hof = tools.HallOfFame(1)
     
-    print(f"Starting Weighted Sum GA (w_cost={w_cost}, w_reliability={w_reliability}, w_impact={w_impact})...")
+    # print(f"Starting Weighted Sum GA (w_cost={w_cost}, w_reliability={w_reliability}, w_impact={w_impact})...")
     population, logbook = algorithms.eaSimple(
         population, 
         toolbox_weighted,
