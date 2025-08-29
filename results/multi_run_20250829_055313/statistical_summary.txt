@@ -1,0 +1,55 @@
+Multi-run Algorithm Comparison Results
+==================================================
+Number of runs: 30
+Config file: /home/juancm/trento/bio/EvoGrid/results/single-run-pop-100-cxpb-0.7-mutpb-0.2-archive-100/20250829_052817/config.used.yaml
+Generated on: 2025-08-29 06:40:55.069375
+
+
+HYPERVOLUME:
+------------------------------
+  NSGA-II        :     1.9870 ±   0.2019
+  Weighted Sum   :     2.4072 ±   0.0342
+  MOPSO          :     2.4320 ±   0.0183
+
+SPACING:
+------------------------------
+  MOPSO          :     0.0203 ±   0.0021
+  NSGA-II        :     0.0356 ±   0.0117
+  Weighted Sum   :     0.0896 ±   0.0318
+
+SPREAD:
+------------------------------
+  NSGA-II        :     0.5900 ±   0.0581
+  MOPSO          :     0.7123 ±   0.0087
+  Weighted Sum   :     0.7337 ±   0.0710
+
+N SOLUTIONS:
+------------------------------
+  Weighted Sum   :    51.0000 ±   0.0000
+  NSGA-II        :    53.8000 ±  11.8107
+  MOPSO          :   100.0000 ±   0.0000
+
+
+STATISTICAL SIGNIFICANCE TESTS:
+========================================
+
+HYPERVOLUME:
+  Kruskal-Wallis: p = 0.0000 (SIGNIFICANT)
+  Pairwise comparisons:
+    NSGA-II_vs_MOPSO    : p = 0.0000 ***
+    NSGA-II_vs_Weighted Sum: p = 0.0000 ***
+    MOPSO_vs_Weighted Sum: p = 0.0040 ***
+
+SPACING:
+  Kruskal-Wallis: p = 0.0000 (SIGNIFICANT)
+  Pairwise comparisons:
+    NSGA-II_vs_MOPSO    : p = 0.0000 ***
+    NSGA-II_vs_Weighted Sum: p = 0.0000 ***
+    MOPSO_vs_Weighted Sum: p = 0.0000 ***
+
+SPREAD:
+  Kruskal-Wallis: p = 0.0000 (SIGNIFICANT)
+  Pairwise comparisons:
+    NSGA-II_vs_MOPSO    : p = 0.0000 ***
+    NSGA-II_vs_Weighted Sum: p = 0.0000 ***
+    MOPSO_vs_Weighted Sum: p = 0.4464    

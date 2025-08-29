@@ -1,0 +1,18 @@
+================================================================================
+DETAILED ANALYSIS FOR: Balanced (mopso)
+================================================================================
+Configuration: 64 Solar Panels, 9 Wind Turbines, 0 Batteries
+Cost: $113280.00
+Reliability: 0.9794 (97.94%)
+Environmental Impact: 0.018397 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 5125.84 kWh (32.10% of demand)
+  • Wind Energy Production: 29657.76 kWh (185.75% of demand)
+  • Total Energy Deficit: 328.30 kWh (2.06% of demand)
+  • Curtailed Energy: 19145.67 kWh (55.04% of production)
+  • Days with Energy Deficit: 65 days (17.81% of year)
+  • Worst Day: Day 111 with 16.45 kWh deficit
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

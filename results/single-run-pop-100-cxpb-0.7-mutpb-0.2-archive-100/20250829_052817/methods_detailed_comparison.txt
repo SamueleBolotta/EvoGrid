@@ -1,0 +1,26 @@
+OPTIMIZATION METHODS COMPARISON SUMMARY
+================================================================================
+
+NSGA-II:
+  • Solutions found: 41
+  • Cost range: $87320 - $314500
+  • Reliability range: 0.863 - 1.000
+  • Env. impact range: 0.017187 - 0.023048
+  • Hypervolume: 1.21e+04
+  • Spacing (diversity): 4163.750
+
+MOPSO:
+  • Solutions found: 100
+  • Cost range: $76800 - $319320
+  • Reliability range: 0.769 - 1.000
+  • Env. impact range: 0.016822 - 0.022319
+  • Hypervolume: 3.11e+04
+  • Spacing (diversity): 1532.105
+
+Weighted Sum:
+  • Solutions found: 51
+  • Cost range: $76440 - $319320
+  • Reliability range: 0.780 - 1.000
+  • Env. impact range: 0.016872 - 0.020969
+  • Hypervolume: 2.03e+04
+  • Spacing (diversity): 16641.698

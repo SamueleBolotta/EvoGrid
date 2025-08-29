@@ -1,0 +1,18 @@
+================================================================================
+DETAILED ANALYSIS FOR: Lowest Emissions (weighted)
+================================================================================
+Configuration: 6 Solar Panels, 33 Wind Turbines, 0 Batteries
+Cost: $319320.00
+Reliability: 0.9732 (97.32%)
+Environmental Impact: 0.016872 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 480.55 kWh (3.01% of demand)
+  • Wind Energy Production: 108745.11 kWh (681.09% of demand)
+  • Total Energy Deficit: 427.83 kWh (2.68% of demand)
+  • Curtailed Energy: 93687.25 kWh (85.77% of production)
+  • Days with Energy Deficit: 43 days (11.78% of year)
+  • Worst Day: Day 133 with 28.32 kWh deficit
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

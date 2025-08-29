@@ -1,0 +1,17 @@
+================================================================================
+DETAILED ANALYSIS FOR: Highest Reliability (nsga2)
+================================================================================
+Configuration: 102 Solar Panels, 7 Wind Turbines, 2 Batteries
+Cost: $115880.00
+Reliability: 1.0000 (100.00%)
+Environmental Impact: 0.020388 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 8169.31 kWh (51.17% of demand)
+  • Wind Energy Production: 23067.15 kWh (144.47% of demand)
+  • Total Energy Deficit: 0.00 kWh (0.00% of demand)
+  • Curtailed Energy: 15265.22 kWh (48.87% of production)
+  • Days with Energy Deficit: 0 days (0.00% of year)
+  • Battery Capacity: 10.00 kWh
+  • Average Battery State: 9.89 kWh (98.90% of capacity)

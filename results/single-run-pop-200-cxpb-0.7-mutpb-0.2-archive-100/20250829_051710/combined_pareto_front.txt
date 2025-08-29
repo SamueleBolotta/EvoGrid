@@ -1,0 +1,7 @@
+Unified Pareto Front Statistics:
+Total solutions considered: 241
+Pareto optimal solutions: 216
+Contribution by algorithm:
+  • MOPSO: 95 solutions (44.0%)
+  • NSGA-II: 71 solutions (32.9%)
+  • Weighted-Sum: 50 solutions (23.1%)

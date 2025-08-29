@@ -1,0 +1,18 @@
+================================================================================
+DETAILED ANALYSIS FOR: Lowest Cost (nsga2)
+================================================================================
+Configuration: 22 Solar Panels, 7 Wind Turbines, 0 Batteries
+Cost: $76440.00
+Reliability: 0.8291 (82.91%)
+Environmental Impact: 0.017603 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 1762.01 kWh (11.04% of demand)
+  • Wind Energy Production: 23067.15 kWh (144.47% of demand)
+  • Total Energy Deficit: 2728.66 kWh (17.09% of demand)
+  • Curtailed Energy: 11591.58 kWh (46.69% of production)
+  • Days with Energy Deficit: 159 days (43.56% of year)
+  • Worst Day: Day 133 with 34.21 kWh deficit
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

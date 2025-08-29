@@ -1,0 +1,17 @@
+================================================================================
+DETAILED ANALYSIS FOR: Highest Reliability (mopso)
+================================================================================
+Configuration: 82 Solar Panels, 28 Wind Turbines, 0 Batteries
+Cost: $303240.00
+Reliability: 1.0000 (100.00%)
+Environmental Impact: 0.017554 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 6567.49 kWh (41.13% of demand)
+  • Wind Energy Production: 92268.58 kWh (577.90% of demand)
+  • Total Energy Deficit: 0.00 kWh (0.00% of demand)
+  • Curtailed Energy: 82869.83 kWh (83.85% of production)
+  • Days with Energy Deficit: 0 days (0.00% of year)
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

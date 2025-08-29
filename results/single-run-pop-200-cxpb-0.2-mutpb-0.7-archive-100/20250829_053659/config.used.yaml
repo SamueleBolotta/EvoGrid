@@ -1,0 +1,121 @@
+tag: single-run-pop-200-cxpb-0.2-mutpb-0.7-archive-100
+seed: 42
+
+nsga:
+  pop_size: 200
+  num_generations: 50
+  cxpb: 0.2
+  mutpb: 0.7
+
+weighted:
+  pop_size: 200
+  num_generations: 50
+  cxpb: 0.2
+  mutpb: 0.7
+  weights: [0.6, 0.3, 0.1]  # [w_cost, w_reliability, w_impact]
+  # Optional list of weight triplets to sweep; if provided, these override 'weights'
+  # Suggested defaults include extremes and some evenly distributed combinations
+  weights_list:
+    - [1.0, 0.0, 0.0]  # minimize cost only
+    - [0.0, 1.0, 0.0]  # maximize reliability only
+    - [0.0, 0.0, 1.0]  # minimize environmental impact only
+    # 47 random normalized weight triplets
+    - [0.52, 0.33, 0.15]
+    - [0.28, 0.48, 0.24]
+    - [0.12, 0.67, 0.21]
+    - [0.40, 0.12, 0.48]
+    - [0.19, 0.52, 0.29]
+    - [0.33, 0.38, 0.29]
+    - [0.26, 0.61, 0.13]
+    - [0.14, 0.29, 0.57]
+    - [0.36, 0.23, 0.41]
+    - [0.47, 0.11, 0.42]
+    - [0.09, 0.74, 0.17]
+    - [0.41, 0.32, 0.27]
+    - [0.38, 0.48, 0.14]
+    - [0.22, 0.13, 0.65]
+    - [0.55, 0.26, 0.19]
+    - [0.31, 0.54, 0.15]
+    - [0.44, 0.36, 0.20]
+    - [0.18, 0.44, 0.38]
+    - [0.61, 0.29, 0.10]
+    - [0.25, 0.18, 0.57]
+    - [0.13, 0.53, 0.34]
+    - [0.29, 0.40, 0.31]
+    - [0.36, 0.19, 0.45]
+    - [0.24, 0.63, 0.13]
+    - [0.30, 0.15, 0.55]
+    - [0.48, 0.39, 0.13]
+    - [0.20, 0.35, 0.45]
+    - [0.42, 0.21, 0.37]
+    - [0.34, 0.50, 0.16]
+    - [0.27, 0.24, 0.49]
+    - [0.58, 0.19, 0.23]
+    - [0.15, 0.62, 0.23]
+    - [0.46, 0.12, 0.42]
+    - [0.21, 0.47, 0.32]
+    - [0.39, 0.41, 0.20]
+    - [0.12, 0.25, 0.63]
+    - [0.31, 0.37, 0.32]
+    - [0.52, 0.14, 0.34]
+    - [0.26, 0.49, 0.25]
+    - [0.35, 0.28, 0.37]
+    - [0.17, 0.56, 0.27]
+    - [0.23, 0.20, 0.57]
+    - [0.40, 0.34, 0.26]
+    - [0.28, 0.58, 0.14]
+    - [0.37, 0.16, 0.47]
+    - [0.19, 0.39, 0.42]
+    - [0.49, 0.24, 0.27]
+    - [0.32, 0.45, 0.23]
+  normalization:
+    # Although budget constraint is 200000, we use 550000 to ensure that the cost is always normalized to 0-1
+    # Maximum theoretical cost ≈ 500 panels × $300 + 50 turbines × $6,000 + 50 batteries × $2,000 = $550,000
+    cost: [0, 550000]
+    reliability: [0.0, 1.0]
+    impact: [0.0, 0.05]
+
+mopso:
+  swarm_size: 200
+  max_iterations: 50
+  archive_size: 100
+  inertia_weight: 0.5
+  cognitive_coeff: 1.5
+  social_coeff: 1.5
+
+bounds:
+  solar_panels: [0, 500]
+  wind_turbines: [0, 50]
+  batteries: [0, 50]
+
+system:
+  solar:
+    capacity_kw: 0.4
+    cost: 300
+    land_m2: 3
+    lifecycle_emissions: 40
+  wind:
+    capacity_kw: 3.0
+    cost: 6000
+    land_m2: 100
+    lifecycle_emissions: 800
+  battery:
+    capacity_kwh: 5.0
+    cost: 2000
+    cycle_life: 4000
+    lifecycle_emissions: 150
+  constraints:
+    max_land_m2: 10000
+    max_budget: 200000
+    min_energy_kwh_per_day: 50
+  project_lifetime_years: 20
+
+data:
+  source: synthetic   # synthetic | csv
+  days: 365
+  csv_path: ""
+  aggregate_to_daily: true
+
+output:
+  base_dir: results
+

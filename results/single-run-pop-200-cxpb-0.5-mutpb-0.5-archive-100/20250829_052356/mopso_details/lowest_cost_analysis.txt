@@ -1,0 +1,18 @@
+================================================================================
+DETAILED ANALYSIS FOR: Lowest Cost (mopso)
+================================================================================
+Configuration: 21 Solar Panels, 7 Wind Turbines, 0 Batteries
+Cost: $76020.00
+Reliability: 0.8254 (82.54%)
+Environmental Impact: 0.017570 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 1681.92 kWh (10.53% of demand)
+  • Wind Energy Production: 23067.15 kWh (144.47% of demand)
+  • Total Energy Deficit: 2787.26 kWh (17.46% of demand)
+  • Curtailed Energy: 11570.09 kWh (46.75% of production)
+  • Days with Energy Deficit: 159 days (43.56% of year)
+  • Worst Day: Day 133 with 34.63 kWh deficit
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

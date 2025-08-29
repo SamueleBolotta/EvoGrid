@@ -1,0 +1,18 @@
+================================================================================
+DETAILED ANALYSIS FOR: Balanced (mix)
+================================================================================
+Configuration: 53 Solar Panels, 10 Wind Turbines, 0 Batteries
+Cost: $118260.00
+Reliability: 0.9660 (96.60%)
+Environmental Impact: 0.018057 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 4244.84 kWh (26.59% of demand)
+  • Wind Energy Production: 32953.06 kWh (206.39% of demand)
+  • Total Energy Deficit: 542.19 kWh (3.40% of demand)
+  • Curtailed Energy: 21773.85 kWh (58.54% of production)
+  • Days with Energy Deficit: 84 days (23.01% of year)
+  • Worst Day: Day 133 with 19.96 kWh deficit
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

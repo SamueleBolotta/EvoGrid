@@ -1,0 +1,18 @@
+================================================================================
+DETAILED ANALYSIS FOR: Balanced (nsga2)
+================================================================================
+Configuration: 60 Solar Panels, 11 Wind Turbines, 0 Batteries
+Cost: $130800.00
+Reliability: 0.9834 (98.34%)
+Environmental Impact: 0.018087 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 4805.48 kWh (30.10% of demand)
+  • Wind Energy Production: 36248.37 kWh (227.03% of demand)
+  • Total Energy Deficit: 264.36 kWh (1.66% of demand)
+  • Curtailed Energy: 25351.98 kWh (61.75% of production)
+  • Days with Energy Deficit: 56 days (15.34% of year)
+  • Worst Day: Day 133 with 16.59 kWh deficit
+  • Battery Capacity: 0.00 kWh
+  • Average Battery State: 0.00 kWh (0.00% of capacity)

@@ -1,0 +1,17 @@
+================================================================================
+DETAILED ANALYSIS FOR: Highest Reliability (mix)
+================================================================================
+Configuration: 113 Solar Panels, 6 Wind Turbines, 3 Batteries
+Cost: $113820.00
+Reliability: 1.0000 (100.00%)
+Environmental Impact: 0.021394 kg CO2/kWh
+
+Summary Statistics:
+  • Total Annual Energy Demand: 15966.24 kWh
+  • Solar Energy Production: 9050.31 kWh (56.68% of demand)
+  • Wind Energy Production: 19771.84 kWh (123.84% of demand)
+  • Total Energy Deficit: 0.00 kWh (0.00% of demand)
+  • Curtailed Energy: 12848.42 kWh (44.58% of production)
+  • Days with Energy Deficit: 0 days (0.00% of year)
+  • Battery Capacity: 15.00 kWh
+  • Average Battery State: 14.90 kWh (99.32% of capacity)
